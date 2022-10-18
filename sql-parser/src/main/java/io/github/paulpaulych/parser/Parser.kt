@@ -2,10 +2,12 @@ package io.github.paulpaulych.parser
 
 import io.github.paulpaulych.common.Either
 
-typealias Parser<A> = (Location) -> Either<Failure, Success<A>>
+fun interface Parser<A> {
+    fun parse(location: Location): Either<Failure, Success<A>>
+}
 
 data class Success<out A>(
-    val a: A,
+    val get: A,
     val consumed: Int
 ) {
     fun advanceConsumed(n: Int) = copy(consumed = consumed + n)
@@ -30,7 +32,7 @@ data class ParseError(
 fun ParseError.push(loc: Location, msg: String): ParseError =
     this.copy(stack = listOf(loc to msg) + this.stack)
 
-fun ParseError.withNewTag(tag: String): ParseError {
+fun ParseError.tag(tag: String): ParseError {
     val latest = this.stack.firstOrNull()
         ?.first
         ?.let { Pair(it, tag) }

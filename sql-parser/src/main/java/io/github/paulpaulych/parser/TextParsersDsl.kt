@@ -7,7 +7,7 @@ import io.github.paulpaulych.parser.TextParsers.regex
 import io.github.paulpaulych.parser.TextParsers.succeed
 import java.util.regex.Pattern
 
-object ParsersDsl {
+object TextParsersDsl {
 
     fun nRepeat(): Parser<Int> = regex(Regex("\\d+"))
         .flatMap { digit ->
@@ -39,7 +39,6 @@ object ParsersDsl {
         return or(this, pb)
     }
 
-
     fun <A, B> Parser<A>.map(f: (A) -> B): Parser<B> {
         return this.flatMap { a -> succeed(f(a)) }
     }
@@ -50,7 +49,7 @@ object ParsersDsl {
         f: (A, B) -> C
     ): Parser<C> {
         return pa.flatMap { a ->
-            pb().map { b -> f(a, b) }
+            pb().map { b -> f(a, b)  }
         }
     }
 
@@ -58,18 +57,13 @@ object ParsersDsl {
         return map2(p, { p.many() } ) { a, b -> listOf(a) + b }
     }
 
-    infix fun <A, B> Parser<A>.product(
-        pb: Parser<B>
-    ): Parser<Pair<A, B>> =
-        this.flatMap { a ->
-            pb.map { b -> Pair(a, b) }
-        }
+    infix fun <A, B> Parser<A>.then(pb: Parser<B>): Parser<Pair<A, B>> = map2(this, { pb }) { a, b -> Pair(a, b) }
 
     infix fun <A, B> Parser<A>.skipR(p: Parser<B>): Parser<A> =
-        (this product p).map { it.first }
+        (this then p).map { it.first }
 
     infix fun <A, B> Parser<A>.skipL(p: Parser<B>): Parser<B> =
-        (this product p).map { it.second }
+        (this then p).map { it.second }
 
 
     val Regex.parser: Parser<String>

@@ -7,21 +7,21 @@ import io.github.paulpaulych.common.Either.Right
 object TextParsers {
 
     fun string(s: String): Parser<String> =
-        { location: Location ->
+        Parser { location: Location ->
             when (val idx = firstNonMatchingIndex(s, location.input, location.offset)) {
                 null -> Right(Success(s, s.length))
                 else -> Left(Failure(
-                    error = location.advanceBy(idx).toError("'$s'"),
-                    isCommitted = idx != 0
+                    error = location.advanceBy(idx).toError("'$s'").tag("expected"),
+                    isCommitted = false
                 ))
             }
         }
 
     fun regex(regex: Regex): Parser<String> =
-        { location ->
+        Parser { location ->
             when (val prefix = location.input.findPrefixMatching(regex, location.offset)) {
                 null -> Left(Failure(
-                    error = location.toError("regex $regex"),
+                    error = location.toError("regex ($regex)").tag("expected expression matching"),
                     isCommitted = false
                 ))
                 else -> Right(Success(prefix, prefix.length))
@@ -29,51 +29,55 @@ object TextParsers {
         }
 
     fun <A> succeed(a: A): Parser<A> =
-        { Right(Success(a, 0)) }
+        Parser { Right(Success(a, 0)) }
 
     fun <A> slice(pa: Parser<A>): Parser<String> =
-        { location ->
-            when (val res = pa(location)) {
+        Parser { location ->
+            when (val res = pa.parse(location)) {
                 is Left -> res
                 is Right -> Right(Success(location.slice(res.value.consumed), res.value.consumed))
             }
         }
 
-    fun <A> scope(msg: String, p: Parser<A>): Parser<A> =
-        { state -> p(state)
-            .mapLeft { failure -> failure.copy(error = failure.error.push(state, msg)) }
-        }
-
-    fun <A> tag(msg: String, p: Parser<A>): Parser<A> =
-        { state ->
-            p(state).mapLeft { failure -> failure.copy(error = failure.error.withNewTag(msg)) }
-        }
-
-    fun <A> attempt(p: Parser<A>): Parser<A> =
-        { state -> p(state).mapLeft { it.uncommit() }}
-
     fun <A> or(pa: Parser<A>, pb: Parser<A>): Parser<A> {
-        return { state ->
-            val res = pa(state)
+        return Parser { state ->
+            val res = pa.parse(state)
             res.flatMapLeft { failure ->
                 if (failure.isCommitted) res
-                else pa(state)
+                else pb.parse(state)
             }
         }
     }
 
     fun <A, B> flatMap(pa: Parser<A>, f: (A) -> Parser<B>): Parser<B> =
-        { state ->
-            val aResult = pa(state)
+        Parser { location ->
+            val aResult = pa.parse(location)
             aResult.flatMap { aSuccess ->
-                val pb = f(aSuccess.a)
-                pb(state.advanceBy(aSuccess.consumed))
-                    .mapLeft { failure -> failure.addCommit(aSuccess.consumed != 0) }
-                    .map { bSuccess -> bSuccess.advanceConsumed(bSuccess.consumed) }
+                val pb = f(aSuccess.get)
+                val newLocation = location.advanceBy(aSuccess.consumed)
+                pb.parse(newLocation)
+                    //TODO commit = aSuccess.consumed != 0
+                    .mapLeft { failure -> failure.addCommit(false) }
+                    .map { bSuccess ->
+                        bSuccess.advanceConsumed(aSuccess.consumed)
+                    }
             }
         }
 
+    fun <A> scope(msg: String, p: Parser<A>): Parser<A> =
+        Parser { state -> p.parse(state)
+            .mapLeft { failure -> failure.copy(error = failure.error.push(state, msg)) }
+        }
+
+    fun <A> tag(msg: String, p: Parser<A>): Parser<A> =
+        Parser { state ->
+            p.parse(state).mapLeft { failure -> failure.copy(error = failure.error.tag(msg)) }
+        }
+
+    fun <A> attempt(p: Parser<A>): Parser<A> =
+        Parser { state -> p.parse(state).mapLeft { it.uncommit() }}
+
     fun <A> run(p: Parser<A>, input: String): Either<Failure, Success<A>> {
-        return p(Location(input = input, offset = 0))
+        return p.parse(Location(input = input, offset = 0))
     }
 }

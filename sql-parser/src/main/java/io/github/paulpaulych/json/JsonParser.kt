@@ -2,15 +2,15 @@ package io.github.paulpaulych.json
 
 import io.github.paulpaulych.json.JSON.*
 import io.github.paulpaulych.parser.Parser
-import io.github.paulpaulych.parser.ParsersDsl.map
-import io.github.paulpaulych.parser.ParsersDsl.or
-import io.github.paulpaulych.parser.ParsersDsl.parser
-import io.github.paulpaulych.parser.ParsersDsl.product
-import io.github.paulpaulych.parser.ParsersDsl.sep
-import io.github.paulpaulych.parser.ParsersDsl.skipL
-import io.github.paulpaulych.parser.ParsersDsl.skipR
-import io.github.paulpaulych.parser.ParsersDsl.surround
-import io.github.paulpaulych.parser.ParsersDsl.thru
+import io.github.paulpaulych.parser.TextParsersDsl.map
+import io.github.paulpaulych.parser.TextParsersDsl.or
+import io.github.paulpaulych.parser.TextParsersDsl.parser
+import io.github.paulpaulych.parser.TextParsersDsl.then
+import io.github.paulpaulych.parser.TextParsersDsl.sep
+import io.github.paulpaulych.parser.TextParsersDsl.skipL
+import io.github.paulpaulych.parser.TextParsersDsl.skipR
+import io.github.paulpaulych.parser.TextParsersDsl.surround
+import io.github.paulpaulych.parser.TextParsersDsl.thru
 import io.github.paulpaulych.parser.TextParsers.string
 
 object JsonParser {
@@ -37,7 +37,7 @@ object JsonParser {
             jArr()
 
     private val keyval: Parser<Pair<String, JSON>> =
-        quoted product (":".parser skipL json())
+        quoted then (":".parser skipL json())
 
     private fun jObj(): Parser<JSON> =
         surround("{".parser, "}".parser,
