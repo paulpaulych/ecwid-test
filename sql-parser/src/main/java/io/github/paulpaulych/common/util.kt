@@ -5,18 +5,21 @@ fun firstNonMatchingIndex(
     s2: String,
     s2Offset: Int
 ): Int? {
-    var pos = 0
-    var offPos = pos + s2Offset
-    while (!(pos > s1.length - 1 || offPos > s2.length - 1)) {
-        if (s1[pos] != s2[pos]) {
-            return pos
+    var pos1 = 0
+    var pos2 = pos1 + s2Offset
+    while (pos1 < s1.length && pos2 < s2.length) {
+        if (s1[pos1] != s2[pos2]) {
+            return pos1
         }
-        pos += 1
-        offPos += 1
+        pos1 += 1
+        pos2 += 1
+    }
+    if (pos1 != s1.length) {
+        return pos1
     }
     return null
 }
 
-fun String.findPrefixMatching(r: Regex): MatchResult? {
-    return r.find(this)?.takeIf { it.range.first == 0 }
+fun String.findPrefixMatching(r: Regex, offset: Int): String? {
+    return r.find(this.substring(offset))?.takeIf { it.range.first == 0 }?.value
 }

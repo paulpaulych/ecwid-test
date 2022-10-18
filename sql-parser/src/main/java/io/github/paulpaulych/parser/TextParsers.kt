@@ -19,12 +19,12 @@ object TextParsers {
 
     fun regex(regex: Regex): Parser<String> =
         { location ->
-            when (val prefix = location.input.findPrefixMatching(regex)) {
+            when (val prefix = location.input.findPrefixMatching(regex, location.offset)) {
                 null -> Left(Failure(
                     error = location.toError("regex $regex"),
                     isCommitted = false
                 ))
-                else -> Right(Success(prefix.value, prefix.value.length))
+                else -> Right(Success(prefix, prefix.length))
             }
         }
 
