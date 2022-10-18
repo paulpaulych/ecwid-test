@@ -1,36 +1,21 @@
 package io.github.paulpaulych.parser
 
-import io.github.paulpaulych.common.Either
-import io.github.paulpaulych.common.Either.Left
-import io.github.paulpaulych.common.Either.Right
+import io.github.paulpaulych.TestUtils.err
+import io.github.paulpaulych.TestUtils.ok
+import io.github.paulpaulych.TestUtils.runParserTest
 import io.github.paulpaulych.parser.TextParsers.flatMap
 import io.github.paulpaulych.parser.TextParsers.regex
 import io.github.paulpaulych.parser.TextParsers.scope
 import io.github.paulpaulych.parser.TextParsers.slice
 import io.github.paulpaulych.parser.TextParsers.string
 import io.github.paulpaulych.parser.TextParsers.succeed
+import io.github.paulpaulych.parser.TextParsersDsl.defer
 import io.github.paulpaulych.parser.TextParsersDsl.or
-import io.github.paulpaulych.parser.TextParsersDsl.then
+import io.github.paulpaulych.parser.TextParsersDsl.and
 import io.kotest.core.spec.style.DescribeSpec
 import io.kotest.data.*
-import io.kotest.matchers.shouldBe
 
 internal class TextParsersTest : DescribeSpec({
-
-    fun <A> runParserTest(
-        vararg cases: Row3<Parser<A>, String, Either<Failure, Success<A>>>
-    ) {
-        forAll(table(
-            headers("input", "parser", "result"),
-            *cases,
-        )) { parser, source, expected ->
-            TextParsers.run(parser, source) shouldBe expected
-        }
-    }
-
-    fun <A> ok(a: A, consumed: Int) = Right(Success(a, consumed))
-    fun err(isCommitted: Boolean, stack: List<Pair<Location, String>>) =
-        Left(Failure(ParseError(stack.toList()), isCommitted))
 
     it("string parser") {
         runParserTest(
@@ -106,13 +91,13 @@ internal class TextParsersTest : DescribeSpec({
     //TODO: скомпоновать ошибки из всех ветвей
     it("or parser") {
         runParserTest(
-            row(string("abc") or string("aaa"), "abc", ok("abc", consumed = 3)),
-            row(string("abc") or string("aaa"), "aaa", ok("aaa", consumed = 3)),
-            row(regex(Regex("\\d+")) or string("aaa"), "11aa", ok("11", consumed = 2)),
-            row(regex(Regex("\\d+")) or string("aaa"), "aaa", ok("aaa", consumed = 3)),
-            row(string("bb") or string("aa"), "ccaabb", err(
+            row(string("abc") or { string("aaa") }, "abc", ok("abc", consumed = 3)),
+            row(string("abc") or { string("aaa") }, "aaa", ok("aaa", consumed = 3)),
+            row(regex(Regex("\\d+")) or { string("aaa") }, "11aa", ok("11", consumed = 2)),
+            row(regex(Regex("\\d+")) or { string("aaa") }, "aaa", ok("aaa", consumed = 3)),
+            row(string("bb") or { string("aa") }, "ccaabb", err(
                 isCommitted = false,
-                listOf(
+                stack = listOf(
                     Location("ccaabb", 0) to "expected",
                     Location("ccaabb", 0) to "'aa'",
                 )
@@ -145,8 +130,8 @@ internal class TextParsersTest : DescribeSpec({
 
     it("scope combinator") {
         runParserTest(
-            row(scope("greeting", string("hello, ") then string("world")), "hello, world", ok(Pair("hello, ", "world"), consumed = 12)),
-            row(scope("greeting", string("hello, ") then string("world")), "hello, w0rld", err(
+            row(scope("greeting", string("hello, ") and string("world").defer()), "hello, world", ok(Pair("hello, ", "world"), consumed = 12)),
+            row(scope("greeting", string("hello, ") and string("world").defer()), "hello, w0rld", err(
                 isCommitted = false,
                 stack = listOf(
                     Location("hello, w0rld", 0) to "greeting",

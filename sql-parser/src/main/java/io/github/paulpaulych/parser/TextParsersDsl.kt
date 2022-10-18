@@ -4,7 +4,9 @@ import io.github.paulpaulych.parser.TextParsers.flatMap
 import io.github.paulpaulych.parser.TextParsers.or
 import io.github.paulpaulych.parser.TextParsers.string
 import io.github.paulpaulych.parser.TextParsers.regex
+import io.github.paulpaulych.parser.TextParsers.scope
 import io.github.paulpaulych.parser.TextParsers.succeed
+import io.github.paulpaulych.parser.TextParsers.tag
 import java.util.regex.Pattern
 
 object TextParsersDsl {
@@ -15,7 +17,7 @@ object TextParsersDsl {
             string("a").repeat(count).map { count }
         }
 
-    fun <A> defer(pa: () -> Parser<A>): Parser<A> = pa()
+    fun <A> Parser<A>.defer(): () -> Parser<A> = { this }
 
     fun <A> Parser<A>.repeat(n: Int): Parser<List<A>> {
         if (n == 0) {
@@ -24,18 +26,24 @@ object TextParsersDsl {
         return map2(this, { this.repeat(n - 1) }) { a, b -> listOf(a) + b }
     }
 
-    fun <A> Parser<A>.many(): Parser<List<A>> {
-        val parser = this
-        val notEmptyList = map2(parser, { parser.many() }) { a, la -> listOf(a) + la }
-        val emptyList = succeed(listOf<A>())
-        return notEmptyList or emptyList
-    }
+    fun <A> Parser<A>.many(): Parser<List<A>> =
+        or(
+            map2(this, { this.many() }) { a, la -> listOf(a) + la },
+            { succeed(listOf<A>()) }
+        )
 
     fun <A, B> Parser<A>.flatMap(f: (A) -> Parser<B>): Parser<B> {
         return flatMap(this, f)
     }
 
-    infix fun <A> Parser<A>.or(pb: Parser<A>): Parser<A> {
+    infix fun <A> Parser<A>.scope(scope: String): Parser<A> =
+        scope(scope, this)
+
+    infix fun <A> Parser<A>.tag(msg: String): Parser<A> =
+        tag(msg, this)
+
+
+    infix fun <A> Parser<out A>.or(pb: () -> Parser<out A>): Parser<A> {
         return or(this, pb)
     }
 
@@ -57,13 +65,15 @@ object TextParsersDsl {
         return map2(p, { p.many() } ) { a, b -> listOf(a) + b }
     }
 
-    infix fun <A, B> Parser<A>.then(pb: Parser<B>): Parser<Pair<A, B>> = map2(this, { pb }) { a, b -> Pair(a, b) }
+    infix fun <A, B> Parser<A>.and(pb: () -> Parser<B>): Parser<Pair<A, B>> = map2(this, pb) { a, b -> Pair(a, b) }
+
+    infix fun <A, B> Parser<A>.and(pb: Parser<B>): Parser<Pair<A, B>> = map2(this, pb.defer()) { a, b -> Pair(a, b) }
 
     infix fun <A, B> Parser<A>.skipR(p: Parser<B>): Parser<A> =
-        (this then p).map { it.first }
+        (this and { p }).map { it.first }
 
     infix fun <A, B> Parser<A>.skipL(p: Parser<B>): Parser<B> =
-        (this then p).map { it.second }
+        (this and { p }).map { it.second }
 
 
     val Regex.parser: Parser<String>
@@ -73,8 +83,8 @@ object TextParsersDsl {
         get() = string(this)
 
     fun <A> surround(
-        start: Parser<String>,
-        stop: Parser<String>,
+        start: Parser<*>,
+        stop: Parser<*>,
         parser: Parser<A>
     ): Parser<A> =
         start skipL parser skipR stop
@@ -82,11 +92,11 @@ object TextParsersDsl {
     fun thru(s: String): Parser<String> =
         Regex(".*?${Pattern.quote(s)}").parser
 
-    infix fun <A> Parser<A>.sep(sep: Parser<String>): Parser<List<A>> {
+    infix fun <A> Parser<A>.sepBy(sep: Parser<String>): Parser<List<A>> {
         val aWithSep = sep skipL this
         val notEmptyList = map2(this, { aWithSep.many() }) { a, la ->
             listOf(a) + la
         }
-        return notEmptyList or succeed(listOf())
+        return notEmptyList or { succeed(listOf()) }
     }
 }

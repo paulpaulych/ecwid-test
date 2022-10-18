@@ -39,12 +39,12 @@ object TextParsers {
             }
         }
 
-    fun <A> or(pa: Parser<A>, pb: Parser<A>): Parser<A> {
+    fun <A> or(pa: Parser<out A>, pb: () -> Parser<out A>): Parser<A> {
         return Parser { state ->
             val res = pa.parse(state)
             res.flatMapLeft { failure ->
                 if (failure.isCommitted) res
-                else pb.parse(state)
+                else pb().parse(state)
             }
         }
     }
