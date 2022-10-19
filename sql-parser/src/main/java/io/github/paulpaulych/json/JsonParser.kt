@@ -7,7 +7,6 @@ import io.github.paulpaulych.parser.TextParsers.regex
 import io.github.paulpaulych.parser.TextParsers.scoped
 import io.github.paulpaulych.parser.TextParsersDsl.map
 import io.github.paulpaulych.parser.TextParsersDsl.or
-import io.github.paulpaulych.parser.TextParsersDsl.parser
 import io.github.paulpaulych.parser.TextParsersDsl.and
 import io.github.paulpaulych.parser.TextParsersDsl.sepBy
 import io.github.paulpaulych.parser.TextParsersDsl.skipL
@@ -16,18 +15,17 @@ import io.github.paulpaulych.parser.TextParsersDsl.surround
 import io.github.paulpaulych.parser.TextParsersDsl.thru
 import io.github.paulpaulych.parser.TextParsers.string
 import io.github.paulpaulych.parser.TextParsersDsl.defer
-import io.github.paulpaulych.parser.TextParsersDsl.scope
 
 object JsonParser {
 
-    val double: Parser<Double> = scoped(
+    private val double: Parser<Double> = scoped(
         scope = "number",
         msg = "invalid number format",
-        parser = Regex("[-+]?(\\d*\\.)?\\d+([eE][-+]?\\d+)?").parser
+        parser = r(Regex("[-+]?(\\d*\\.)?\\d+([eE][-+]?\\d+)?"))
             .map { it.toDouble() }
     )
 
-    val boolean: Parser<Boolean> = scoped(
+    private val boolean: Parser<Boolean> = scoped(
         scope = "boolean",
         parser = or(
             string("true").map { true },
@@ -35,38 +33,45 @@ object JsonParser {
         )
     )
 
-    val quoted: Parser<String> = scoped(
+    private val quoted: Parser<String> = scoped(
         scope = "string",
         msg = "expected quoted string",
-        parser = "\"".parser skipL thru("\"").map { it.dropLast(1) }
+        parser = s("\"") skipL thru("\"").map { it.dropLast(1) }
     )
 
-    val NULL: Parser<JSON> = scoped(
+    private val NULL: Parser<JSON> = scoped(
         scope = "null",
         parser = string("null").map { JNull }
     )
 
-    val literal: Parser<JSON> =
-        NULL or
+    val literal: Parser<JSON> = scoped(
+        scope = "literal",
+        parser = NULL or
             double.map(::JNumber).defer() or
             boolean.map(::JBoolean).defer() or
-            quoted.map(::JString).defer() scope "literal"
+            quoted.map(::JString).defer()
+    )
 
-    fun json() = literal or ::obj or ::arr
+    fun rootJson(): Parser<JSON> = scoped(
+        scope = "JSON",
+        parser = ws skipL obj() or arr().defer() skipR ws
+    )
+
+    fun json(): Parser<JSON> = literal or ::obj or ::arr
 
     fun objEntry(): Parser<Pair<String, JSON>> = scoped(
         scope = "object entry",
         msg = "invalid object entry",
-        parser = quoted skipR (ws and ":".parser.defer() and ws.defer()) and json().defer()
+        parser = quoted skipR (ws and s(":") and ws) and json().defer()
     )
 
     fun obj(): Parser<JSON> = scoped(
         scope = "object",
         msg = "invalid object syntax",
         parser = surround(
-            start = "{".parser and ws,
-            stop = ws and "}".parser,
-            parser = (objEntry() sepBy (ws skipL ",".parser skipR ws)).map { kvs -> JObject(kvs.toMap()) }
+            start = s("{") and ws,
+            stop = ws and s("}"),
+            parser = (objEntry() sepBy (ws skipL s(",") skipR ws)).map { kvs -> JObject(kvs.toMap()) }
         )
     )
 
@@ -79,8 +84,7 @@ object JsonParser {
         )
     )
 
-    private val ws: Parser<String> = Regex("[\u0020\u0009\u000A\u000D]*").parser
-    fun s(s: String) = string(s)
-
-    fun r(regex: Regex) = regex(regex)
+    private val ws: Parser<String> = r(Regex("[\u0020\u0009\u000A\u000D]*"))
+    private fun s(s: String) = string(s)
+    private fun r(regex: Regex) = regex(regex)
 }

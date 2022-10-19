@@ -2,9 +2,7 @@ package io.github.paulpaulych.parser
 
 import io.github.paulpaulych.parser.TextParsers.flatMap
 import io.github.paulpaulych.parser.TextParsers.or
-import io.github.paulpaulych.parser.TextParsers.string
 import io.github.paulpaulych.parser.TextParsers.regex
-import io.github.paulpaulych.parser.TextParsers.scoped
 import io.github.paulpaulych.parser.TextParsers.succeed
 import java.util.regex.Pattern
 
@@ -12,21 +10,14 @@ object TextParsersDsl {
 
     fun <A> Parser<A>.defer(): () -> Parser<A> = { this }
 
-    fun <A> Parser<A>.many(): Parser<List<A>> =
-        or(
-            map2(this, { this.many() }) { a, la -> listOf(a) + la },
-            { succeed(listOf<A>()) }
-        )
+    fun <A> Parser<A>.many(): Parser<List<A>> {
+        val notEmptyList = map2(this, { this.many() }) { a, la -> listOf(a) + la }
+        return notEmptyList or { succeed(listOf()) }
+    }
 
     fun <A, B> Parser<A>.flatMap(f: (A) -> Parser<B>): Parser<B> {
         return flatMap(this, f)
     }
-
-    infix fun <A> Parser<A>.scope(scope: String): Parser<A> =
-        scoped(scope, parser = this)
-
-    fun <A> Parser<A>.scope(scope: String, msg: String): Parser<A> =
-        scoped(scope, msg, this)
 
     infix fun <A> Parser<out A>.or(pb: () -> Parser<out A>): Parser<A> {
         return or(this, pb)
@@ -56,21 +47,14 @@ object TextParsersDsl {
     infix fun <A, B> Parser<A>.skipL(p: Parser<B>): Parser<B> =
         (this and { p }).map { it.second }
 
-    val Regex.parser: Parser<String>
-        get() = regex(this)
-
-    val String.parser: Parser<String>
-        get() = string(this)
-
     fun <A> surround(
         start: Parser<*>,
         stop: Parser<*>,
         parser: Parser<A>
-    ): Parser<A> =
-        start skipL parser skipR stop
+    ): Parser<A> = start skipL parser skipR stop
 
     fun thru(s: String): Parser<String> =
-        Regex(".*?${Pattern.quote(s)}").parser
+        regex(Regex(".*?${Pattern.quote(s)}"))
 
     infix fun <A> Parser<A>.sepBy(sep: Parser<String>): Parser<List<A>> {
         val aWithSep = sep skipL this

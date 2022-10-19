@@ -2,7 +2,8 @@ package io.github.paulpaulych.json
 
 import io.github.paulpaulych.TestUtils.ok
 import io.github.paulpaulych.TestUtils.runParserTest
-import io.github.paulpaulych.common.Either
+import io.github.paulpaulych.common.Either.Left
+import io.github.paulpaulych.common.Either.Right
 import io.github.paulpaulych.json.JSON.*
 import io.github.paulpaulych.parser.ErrorItem.ParseError
 import io.github.paulpaulych.parser.ErrorItem.ScopesTried
@@ -51,7 +52,7 @@ class JsonParserTest: DescribeSpec({
             )
         ) { input ->
             val res = TextParsers.run(parser, input)
-            with((res as Either.Left<StackTrace>).value) {
+            with((res as Left<StackTrace>).value) {
                 state shouldBe State(input, 0)
                 error shouldBe ParseError("literal", "invalid literal syntax")
                 with(checkNotNull(cause)) {
@@ -95,7 +96,7 @@ class JsonParserTest: DescribeSpec({
             )
         ) { input, matcher ->
             val res = TextParsers.run(parser, input)
-            matcher((res as Either.Left).value)
+            matcher((res as Left).value)
         }
     }
 
@@ -111,24 +112,47 @@ class JsonParserTest: DescribeSpec({
     }
 
     it("json object parser") {
-        val parser = JsonParser.obj()
-        runParserTest(
-            row(parser, "{}", ok(JObject(mapOf()), 2)),
-            row(parser,
-                //language=json
-                """{
-                    "a":true,   "b":{"k":"v"}, "c" : 17.3,
-                    "d"  :[], "e": [1, 2], "f": null 
-                }""".trimIndent(),
-                ok(JObject(mapOf(
-                    "a" to JBoolean(true),
-                    "b" to JObject(mapOf("k" to JString("v"))),
-                    "c" to JNumber(17.3),
-                    "d" to JArray(listOf()),
-                    "e" to JArray(listOf(JNumber(1.0), JNumber(2.0))),
-                    "f" to JNull
-                )), consumed = 132)
-            ),
-        )
+        val parser = JsonParser.json()
+        //language=json
+        val json = """{
+            "a":true,   "b":
+            {"k":[
+45.5, {"innerKey": false}]}, "c" : 17.3,
+            "d"  :[], "e": [1,
+            
+            2], "f": null 
+        }"""
+
+        val res = TextParsers.run(parser, json) as Right
+        res.value.get shouldBe JObject(mapOf(
+            "a" to JBoolean(true),
+            "b" to JObject(mapOf("k" to JArray(listOf(JNumber(45.5), JObject(mapOf("innerKey" to JBoolean(false))))))),
+            "c" to JNumber(17.3),
+            "d" to JArray(listOf()),
+            "e" to JArray(listOf(JNumber(1.0), JNumber(2.0))),
+            "f" to JNull
+        ))
+    }
+
+    it("deep error trace") {
+        val parser = JsonParser.rootJson()
+        val json = """{
+            "a":true,   "b":
+            {"k":[
+45.5, {"innerKey": }]}, "c" : 17.3,
+            "d"  :[], "e": [1,
+            
+            2], "f": null 
+        }"""
+
+        val res = TextParsers.run(parser, json) as Left
+        with(res.value) {
+            state shouldBe State(json, 0)
+            error shouldBe ParseError("JSON", "invalid JSON syntax")
+            with(checkNotNull(cause)) {
+                state shouldBe State(json, 0)
+                error shouldBe ScopesTried(listOf("object", "array"))
+            }
+        }
     }
 })

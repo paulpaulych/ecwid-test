@@ -8,13 +8,6 @@ sealed interface Either<out E, out A> {
     data class Left<L>(val value: L): Either<L, Nothing>
 
     data class Right<R>(val value: R): Either<Nothing, R>
-
-    companion object {
-
-        fun <L, R> left(value: L): Either<L, R> = Left(value)
-
-        fun <L, R> right(value: R): Either<L, R> = Right(value)
-    }
 }
 
 fun <E, A, B> Either<E, A>.map(f: (A) -> B): Either<E, B> =
@@ -40,13 +33,3 @@ fun <E, A, ER> Either<E, A>.flatMapLeft(f: (E) -> Either<ER, A>): Either<ER, A> 
         is Left -> f(value)
         is Right -> this
     }
-
-fun <E, A, B, C> map2(
-    ea: Either<E, A>,
-    eb: Either<E, B>,
-    f: (A, B) -> C
-): Either<E, C> {
-    return ea.flatMap { a ->
-        eb.map { b -> f(a, b) }
-    }
-}

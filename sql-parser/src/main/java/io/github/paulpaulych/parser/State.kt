@@ -6,7 +6,7 @@ data class State(
 ) {
 
     init {
-        require(offset < input.length) {
+        require(offset <= input.length) {
             "offset cannot be grater than input len but given offset=$offset for input=$input"
         }
     }
