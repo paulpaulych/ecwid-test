@@ -9,16 +9,20 @@ import java.lang.System.lineSeparator
 internal fun fmt(stack: StackTrace): String {
     val stacktrace = stack.segments()
         .groupBy({ it.state }) { it.error }
-        .map { (state, errors) -> "[${state.line + 1}:${state.column + 1}] ${errors.joinToString(": ") { it.message() }}" }
+        .map { (state, errors) ->
+            val lineInput = InputLine.from(state)
+            "[${lineInput.line + 1}:${lineInput.column + 1}] ${errors.joinToString(": ") { it.message() }}"
+        }
         .joinToString(lineSeparator())
     val (lastMsgState, lastMsg) = stack.segments().last()
-    val lineHeader = "[${lastMsgState.line + 1}:${lastMsgState.column + 1}]"
-    val line = lastMsgState.input.lines()[lastMsgState.line]
-    val highlight = "here --^".padStart(lastMsgState.column + lineHeader.length + 3)
-    return "stacktrace:\n" +
+    val errorInputLine = InputLine.from(lastMsgState)
+    val lineHeader = "[${errorInputLine.line + 1}:${errorInputLine.column + 1}]"
+    val line = lastMsgState.input.lines()[errorInputLine.line]
+    val highlight = "here --^".padStart(errorInputLine.column + lineHeader.length + 2)
+    return "stacktrace:" + lineSeparator() +
             stacktrace + lineSeparator() +
             lineSeparator() +
-            lineHeader + ": " + line + lineSeparator() +
+            lineHeader + " " + line + lineSeparator() +
             highlight + lineSeparator() +
             "error: " + lastMsg.message()
 }

@@ -10,6 +10,7 @@ import io.github.paulpaulych.parser.ErrorItem.ScopesTried
 import io.github.paulpaulych.parser.StackTrace
 import io.github.paulpaulych.parser.State
 import io.github.paulpaulych.parser.TextParsers
+import io.github.paulpaulych.parser.fmt.fmt
 import io.kotest.core.spec.style.DescribeSpec
 import io.kotest.data.forAll
 import io.kotest.data.headers
@@ -68,7 +69,7 @@ class JsonParserTest: DescribeSpec({
         }
     }
 
-    it("json object entry parser") {
+    it("json field parser") {
         val parser = JsonParser.objEntry()
         runParserTest(
             row(parser, "\"a\":null", ok(Pair("a", JNull), 8)),
@@ -82,16 +83,16 @@ class JsonParserTest: DescribeSpec({
             table(
                 headers("input", "error"),
                 row("bla") { e: StackTrace ->
-                    e.error shouldBe ParseError("object entry", "invalid object entry")
+                    e.error shouldBe ParseError("field", "invalid field syntax")
                 },
                 row("123") { e: StackTrace ->
-                    e.error shouldBe ParseError("object entry", "invalid object entry")
+                    e.error shouldBe ParseError("field", "invalid field syntax")
                     e.cause?.error shouldBe ParseError("string", "expected quoted string")
                     e.cause?.cause?.error shouldBe ParseError("'\"'", "expected '\"'")
                 },
                 row("\"key\":abne") { e: StackTrace ->
-                    e.error shouldBe ParseError("object entry", "invalid object entry")
-                    e.cause?.error shouldBe ScopesTried(listOf("literal", "object", "array"))
+                    e.error shouldBe ParseError("field", "invalid field syntax")
+                    e.cause?.error shouldBe ScopesTried(listOf("object", "array", "literal"))
                 },
             )
         ) { input, matcher ->
@@ -123,8 +124,8 @@ class JsonParserTest: DescribeSpec({
             2], "f": null 
         }"""
 
-        val res = TextParsers.run(parser, json) as Right
-        res.value.get shouldBe JObject(mapOf(
+        val res = TextParsers.run(parser, json)
+        (res as Right).value.get shouldBe JObject(mapOf(
             "a" to JBoolean(true),
             "b" to JObject(mapOf("k" to JArray(listOf(JNumber(45.5), JObject(mapOf("innerKey" to JBoolean(false))))))),
             "c" to JNumber(17.3),
@@ -135,7 +136,6 @@ class JsonParserTest: DescribeSpec({
     }
 
     it("deep error trace") {
-        val parser = JsonParser.rootJson()
         val json = """{
             "a":true,   "b":
             {"k":[
@@ -145,14 +145,71 @@ class JsonParserTest: DescribeSpec({
             2], "f": null 
         }"""
 
-        val res = TextParsers.run(parser, json) as Left
+        val res = TextParsers.run(JsonParser.rootJson(), json) as Left
         with(res.value) {
             state shouldBe State(json, 0)
             error shouldBe ParseError("JSON", "invalid JSON syntax")
             with(checkNotNull(cause)) {
                 state shouldBe State(json, 0)
-                error shouldBe ScopesTried(listOf("object", "array"))
+                error shouldBe ParseError("object", "invalid object syntax")
+                with(checkNotNull(cause)) {
+                    state shouldBe State(json, 26)
+                    error shouldBe ParseError("field", "invalid field syntax")
+                    with(checkNotNull(cause)) {
+                        state shouldBe State(json, 43)
+                        error shouldBe ParseError("object", "invalid object syntax")
+                        with(checkNotNull(cause)) {
+                            state shouldBe State(json, 44)
+                            error shouldBe ParseError("field", "invalid field syntax")
+                            with(checkNotNull(cause)) {
+                                state shouldBe State(json, 48)
+                                error shouldBe ParseError("array", "invalid array syntax")
+                                with(checkNotNull(cause)) {
+                                    state shouldBe State(json, 56)
+                                    error shouldBe ParseError("object", "invalid object syntax")
+                                    with(checkNotNull(cause)) {
+                                        state shouldBe State(json, 57)
+                                        error shouldBe ParseError("field", "invalid field syntax")
+                                        with(checkNotNull(cause)) {
+                                            state shouldBe State(json, 69)
+                                            error shouldBe ScopesTried(listOf("object", "array", "literal"))
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
+    }
+
+    it("deep stacktrace fmt test") {
+        val json = """{
+            "a":true,   "b":
+            {"k":[
+45.5, {"innerKey": }]}, "c" : 17.3,
+            "d"  :[], "e": [1,
+            
+            2], "f": null 
+        }"""
+
+        val res = TextParsers.run(JsonParser.rootJson(), json) as Left
+
+        fmt(res.value).lines() shouldContainExactly """
+            stacktrace:
+            [1:1] invalid JSON syntax: invalid object syntax
+            [2:25] invalid field syntax
+            [3:13] invalid object syntax
+            [3:14] invalid field syntax
+            [3:18] invalid array syntax
+            [4:7] invalid object syntax
+            [4:8] invalid field syntax
+            [4:20] expected one of [object, array, literal]
+
+            [4:20] 45.5, {"innerKey": }]}, "c" : 17.3,
+                               here --^
+            error: expected one of [object, array, literal]
+        """.trimIndent().lines()
     }
 })

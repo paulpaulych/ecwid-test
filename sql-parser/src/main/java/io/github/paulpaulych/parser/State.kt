@@ -11,17 +11,6 @@ data class State(
         }
     }
 
-    private val slice by lazy { input.slice(0..offset + 1) }
-
-    val line by lazy { slice.count { it == '\n' } }
-
-    val column by lazy {
-        when (val n = slice.lastIndexOf('\n')) {
-            -1 -> offset
-            else -> offset - n - 1
-        }
-    }
-
     fun advanceBy(i: Int): State {
         return this.copy(offset = offset + i)
     }

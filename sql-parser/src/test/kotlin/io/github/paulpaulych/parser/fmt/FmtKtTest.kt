@@ -25,15 +25,15 @@ internal class FmtKtTest: DescribeSpec({
                             error = ParseError("', world!'", "expected ', world!'")
                         )
                     ),
-"""
-    stacktrace:
-    [1:1] invalid greeting
-    [1:6] expected ', world!'
-    
-    [1:6]: Hello world
-         here --^
-    error: expected ', world!'
-""".trimIndent()
+                    """
+                        stacktrace:
+                        [1:1] invalid greeting
+                        [1:6] expected ', world!'
+                        
+                        [1:6] Hello world
+                            here --^
+                        error: expected ', world!'
+                    """.trimIndent()
                 )
             )
         ) { stack, expected ->

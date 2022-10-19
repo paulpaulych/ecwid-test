@@ -57,21 +57,19 @@ object JsonParser {
         parser = ws skipL obj() or arr().defer() skipR ws
     )
 
-    fun json(): Parser<JSON> = literal or ::obj or ::arr
+    fun json(): Parser<JSON> = obj() or ::arr or literal.defer()
 
     fun objEntry(): Parser<Pair<String, JSON>> = scoped(
-        scope = "object entry",
-        msg = "invalid object entry",
-        parser = quoted skipR (ws and s(":") and ws) and json().defer()
+        scope = "field",
+        parser = quoted skipR (ws and s(":") and ws) and ::json
     )
 
     fun obj(): Parser<JSON> = scoped(
         scope = "object",
-        msg = "invalid object syntax",
         parser = surround(
             start = s("{") and ws,
             stop = ws and s("}"),
-            parser = (objEntry() sepBy (ws skipL s(",") skipR ws)).map { kvs -> JObject(kvs.toMap()) }
+            parser = ((ws skipL objEntry() skipR ws) sepBy s(",")).map { kvs -> JObject(kvs.toMap()) }
         )
     )
 
@@ -80,7 +78,7 @@ object JsonParser {
         parser = surround(
             start = s("[") and ws,
             stop = ws and s("]"),
-            parser = (json() sepBy (ws skipL s(",") skipR ws)).map { vs -> JArray(vs) }
+            parser = ((ws skipL json() skipR ws) sepBy s(",")).map { vs -> JArray(vs) }
         )
     )
 

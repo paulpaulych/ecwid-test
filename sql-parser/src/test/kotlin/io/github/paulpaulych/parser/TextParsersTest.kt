@@ -31,12 +31,14 @@ internal class TextParsersTest : DescribeSpec({
             )),
             row(string("ab"), "aaa", err(
                 stack = StackTrace(
+                    isCommitted = true,
                     state = State("aaa", 1),
                     error = ParseError("'ab'", "expected 'ab'"),
                 )
             )),
             row(string("aaa"), "aa", err(
                 stack = StackTrace(
+                    isCommitted = true,
                     state = State("aa", 2),
                     error = ParseError("'aaa'", "expected 'aaa'"),
                 )
@@ -49,6 +51,7 @@ internal class TextParsersTest : DescribeSpec({
             )),
             row(string("aaa"), "aab", err(
                 stack = StackTrace(
+                    isCommitted = true,
                     state = State("aab", 2),
                     error = ParseError("'aaa'", "expected 'aaa'"),
                 )
@@ -85,7 +88,13 @@ internal class TextParsersTest : DescribeSpec({
     it("or parser") {
         runParserTest(
             row(string("abc") or { string("aaa") }, "abc", ok("abc", consumed = 3)),
-            row(string("abc") or { string("aaa") }, "aaavvv", ok("aaa", consumed = 3)),
+            row(string("abc") or { string("aaa") }, "aaavvv", err(
+                stack = StackTrace(
+                    isCommitted = true,
+                    state = State("aaavvv", 1),
+                    error = ParseError("'abc'", "expected 'abc'")
+                )
+            )),
             row(regex(Regex("\\d+")) or { string("aaa") }, "11aa", ok("11", consumed = 2)),
             row(regex(Regex("\\d+")) or { string("aaa") }, "aaa", ok("aaa", consumed = 3)),
             row(string("bb") or { string("aa") }, "ccaabb", err(
@@ -105,6 +114,7 @@ internal class TextParsersTest : DescribeSpec({
             row(flatMap(string("a"), alphabeticallyNext), "abc", ok("b", consumed = 2)),
             row(flatMap(string("a"), alphabeticallyNext), "acb", err(
                 stack = StackTrace(
+                    isCommitted = true,
                     state = State("acb", 1),
                     error = ParseError("'b'", "expected 'b'"),
                 )
@@ -123,9 +133,11 @@ internal class TextParsersTest : DescribeSpec({
             row(scoped("greeting", parser = string("hello, ") and string("world").defer()), "hello, world", ok(Pair("hello, ", "world"), consumed = 12)),
             row(scoped("greeting", parser = string("hello, ") and string("world").defer()), "hello, w0rld", err(
                 StackTrace(
+                    isCommitted = true,
                     state = State("hello, w0rld", 0),
                     error = ParseError("greeting", "invalid greeting syntax"),
                     cause = StackTrace(
+                        isCommitted = true,
                         state = State("hello, w0rld", 8),
                         error = ParseError("'world'", "expected 'world'"),
                     )
