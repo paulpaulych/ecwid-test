@@ -73,7 +73,10 @@ class JsonParserTest: DescribeSpec({
         val parser = JsonParser.arr()
         runParserTest(
             row(parser, "[]", ok(JArray(listOf()), 2)),
-            row(parser, "[ \"a\"\t\t,123.0, true,\n\n null]", ok(JArray(listOf(JString("a"), JNumber(123.0), JBoolean(true), JNull)),28)),
+            row(parser,
+                "[ \"a\"\t\t,123.0, true,\n\n null]",
+                ok(JArray(listOf(JString("a"), JNumber(123.0), JBoolean(true), JNull)),28)
+            ),
         )
     }
 
@@ -81,17 +84,21 @@ class JsonParserTest: DescribeSpec({
         val parser = JsonParser.obj()
         runParserTest(
             row(parser, "{}", ok(JObject(mapOf()), 2)),
-            row(parser, """{
-                "a":true,   "b":{"k":"v"}, "c" : 17.3,
-                "d"  :[], "e": [1, 2], "f": null 
-            }""".trimIndent(), ok(JObject(mapOf(
-                "a" to JBoolean(true),
-                "b" to JObject(mapOf("k" to JString("v"))),
-                "c" to JNumber(17.3),
-                "d" to JArray(listOf()),
-                "e" to JArray(listOf(JNumber(1.0), JNumber(2.0))),
-                "f" to JNull
-            )),120)),
+            row(parser,
+                //language=json
+                """{
+                    "a":true,   "b":{"k":"v"}, "c" : 17.3,
+                    "d"  :[], "e": [1, 2], "f": null 
+                }""".trimIndent(),
+                ok(JObject(mapOf(
+                    "a" to JBoolean(true),
+                    "b" to JObject(mapOf("k" to JString("v"))),
+                    "c" to JNumber(17.3),
+                    "d" to JArray(listOf()),
+                    "e" to JArray(listOf(JNumber(1.0), JNumber(2.0))),
+                    "f" to JNull
+                )), consumed = 132)
+            ),
         )
     }
 })
