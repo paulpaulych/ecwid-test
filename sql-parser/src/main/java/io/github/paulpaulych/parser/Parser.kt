@@ -62,7 +62,3 @@ data class Location(
 
 fun Location.toError(msg: String) =
     ParseError(listOf(this to msg))
-
-fun Location.slice(n: Int): String {
-    return input.substring(offset, offset + n)
-}

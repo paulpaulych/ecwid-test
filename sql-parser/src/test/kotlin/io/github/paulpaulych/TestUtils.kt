@@ -15,9 +15,9 @@ object TestUtils {
     ) {
         forAll(
             table(
-            headers("input", "parser", "result"),
-            *cases,
-        )
+                headers("parser", "input", "result"),
+                *cases,
+            )
         ) { parser, source, expected ->
             TextParsers.run(parser, source) shouldBe expected
         }

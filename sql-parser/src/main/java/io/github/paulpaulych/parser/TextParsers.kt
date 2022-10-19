@@ -12,7 +12,7 @@ object TextParsers {
                 null -> Right(Success(s, s.length))
                 else -> Left(Failure(
                     error = location.advanceBy(idx).toError("'$s'").tag("expected"),
-                    isCommitted = false
+                    isCommitted = idx != 0
                 ))
             }
         }
@@ -21,7 +21,7 @@ object TextParsers {
         Parser { location ->
             when (val prefix = location.input.findPrefixMatching(regex, location.offset)) {
                 null -> Left(Failure(
-                    error = location.toError("regex ($regex)").tag("expected expression matching"),
+                    error = location.toError("expression matching regex ($regex)").tag("expected"),
                     isCommitted = false
                 ))
                 else -> Right(Success(prefix, prefix.length))
@@ -30,14 +30,6 @@ object TextParsers {
 
     fun <A> succeed(a: A): Parser<A> =
         Parser { Right(Success(a, 0)) }
-
-    fun <A> slice(pa: Parser<A>): Parser<String> =
-        Parser { location ->
-            when (val res = pa.parse(location)) {
-                is Left -> res
-                is Right -> Right(Success(location.slice(res.value.consumed), res.value.consumed))
-            }
-        }
 
     fun <A> or(pa: Parser<out A>, pb: () -> Parser<out A>): Parser<A> {
         return Parser { state ->

@@ -6,7 +6,6 @@ import io.github.paulpaulych.TestUtils.runParserTest
 import io.github.paulpaulych.parser.TextParsers.flatMap
 import io.github.paulpaulych.parser.TextParsers.regex
 import io.github.paulpaulych.parser.TextParsers.scope
-import io.github.paulpaulych.parser.TextParsers.slice
 import io.github.paulpaulych.parser.TextParsers.string
 import io.github.paulpaulych.parser.TextParsers.succeed
 import io.github.paulpaulych.parser.TextParsersDsl.defer
@@ -22,8 +21,22 @@ internal class TextParsersTest : DescribeSpec({
             row(string("aa"), "aa", ok("aa", consumed = 2)),
             row(string("aa"), "aaa", ok("aa", consumed = 2)),
             row(string(""), "aaa", ok("", consumed = 0)),
-            row(string("aaa"), "aa", err(
+            row(string("ab"), "bbb", err(
                 isCommitted = false,
+                stack = listOf(
+                    Location("bbb", 0) to "expected",
+                    Location("bbb", 0) to "'ab'",
+                )
+            )),
+            row(string("ab"), "aaa", err(
+                isCommitted = true,
+                stack = listOf(
+                    Location("aaa", 1) to "expected",
+                    Location("aaa", 1) to "'ab'",
+                )
+            )),
+            row(string("aaa"), "aa", err(
+                isCommitted = true,
                 stack = listOf(
                     Location("aa", 2) to "expected",
                     Location("aa", 2) to "'aaa'",
@@ -37,7 +50,7 @@ internal class TextParsersTest : DescribeSpec({
                 )
             )),
             row(string("aaa"), "aab", err(
-                isCommitted = false,
+                isCommitted = true,
                 stack = listOf(
                     Location("aab", 2) to "expected",
                     Location("aab", 2) to "'aaa'"
@@ -53,15 +66,15 @@ internal class TextParsersTest : DescribeSpec({
             row(regex(Regex("\\d+")), "aa11", err(
                 isCommitted = false,
                 stack = listOf(
-                    Location("aa11", 0) to "expected expression matching",
-                    Location("aa11", 0) to "regex (\\d+)",
+                    Location("aa11", 0) to "expected",
+                    Location("aa11", 0) to "expression matching regex (\\d+)",
                 )
             )),
             row(regex(Regex("\\d+")), "aa", err(
                 isCommitted = false,
                 stack = listOf(
-                    Location("aa", 0) to "expected expression matching",
-                    Location("aa", 0) to "regex (\\d+)"
+                    Location("aa", 0) to "expected",
+                    Location("aa", 0) to "expression matching regex (\\d+)"
                 )
             )),
         )
@@ -74,25 +87,16 @@ internal class TextParsersTest : DescribeSpec({
         )
     }
 
-    it("slice parser") {
-        runParserTest(
-            row(slice(regex(Regex("\\d+"))), "11aa", ok("11", consumed = 2)),
-            row(slice(string("aa1")), "aa11", ok("aa1", consumed = 3)),
-            row(slice(string("bb")), "aa11", err(
-                isCommitted = false,
-                listOf(
-                    Location("aa11", 0) to "expected",
-                    Location("aa11", 0) to "'bb'"
-                )
-            )),
-        )
-    }
-
-    //TODO: скомпоновать ошибки из всех ветвей
     it("or parser") {
         runParserTest(
             row(string("abc") or { string("aaa") }, "abc", ok("abc", consumed = 3)),
-            row(string("abc") or { string("aaa") }, "aaa", ok("aaa", consumed = 3)),
+            row(string("abc") or { string("aaa") }, "aaavvv", err(
+                isCommitted = true,
+                stack = listOf(
+                    Location("aaavvv", 1) to "expected",
+                    Location("aaavvv", 1) to "'abc'",
+                )
+            )),
             row(regex(Regex("\\d+")) or { string("aaa") }, "11aa", ok("11", consumed = 2)),
             row(regex(Regex("\\d+")) or { string("aaa") }, "aaa", ok("aaa", consumed = 3)),
             row(string("bb") or { string("aa") }, "ccaabb", err(
@@ -132,7 +136,7 @@ internal class TextParsersTest : DescribeSpec({
         runParserTest(
             row(scope("greeting", string("hello, ") and string("world").defer()), "hello, world", ok(Pair("hello, ", "world"), consumed = 12)),
             row(scope("greeting", string("hello, ") and string("world").defer()), "hello, w0rld", err(
-                isCommitted = false,
+                isCommitted = true,
                 stack = listOf(
                     Location("hello, w0rld", 0) to "greeting",
                     Location("hello, w0rld", 8) to "expected",
