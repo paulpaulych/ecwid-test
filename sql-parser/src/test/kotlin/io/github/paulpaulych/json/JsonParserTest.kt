@@ -4,7 +4,7 @@ import io.github.paulpaulych.TestUtils.err
 import io.github.paulpaulych.TestUtils.ok
 import io.github.paulpaulych.TestUtils.runParserTest
 import io.github.paulpaulych.json.JSON.*
-import io.github.paulpaulych.parser.Location
+import io.github.paulpaulych.parser.State
 import io.github.paulpaulych.parser.TextParsers
 import io.kotest.core.spec.style.DescribeSpec
 import io.kotest.data.forAll
@@ -49,10 +49,10 @@ class JsonParserTest: DescribeSpec({
             TextParsers.run(parser, input) shouldBe err(
                 isCommitted = false,
                 stack = listOf(
-                    Location(input, 0) to "expected",
-                    Location(input, 0) to "literal",
-                    Location(input, 0) to "expected",
-                    Location(input, 0) to "'\"'",
+                    State(input, 0) to "expected",
+                    State(input, 0) to "literal",
+                    State(input, 0) to "expected",
+                    State(input, 0) to "'\"'",
                 )
             )
         }

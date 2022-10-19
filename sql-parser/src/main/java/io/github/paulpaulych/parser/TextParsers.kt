@@ -7,11 +7,11 @@ import io.github.paulpaulych.common.Either.Right
 object TextParsers {
 
     fun string(s: String): Parser<String> =
-        Parser { location: Location ->
-            when (val idx = firstNonMatchingIndex(s, location.input, location.offset)) {
+        Parser { state: State ->
+            when (val idx = firstNonMatchingIndex(s, state.input, state.offset)) {
                 null -> Right(Success(s, s.length))
                 else -> Left(Failure(
-                    error = location.advanceBy(idx).toError("'$s'").tag("expected"),
+                    error = state.advanceBy(idx).toError("'$s'").tag("expected"),
                     isCommitted = idx != 0
                 ))
             }
@@ -70,6 +70,6 @@ object TextParsers {
         Parser { state -> p.parse(state).mapLeft { it.uncommit() }}
 
     fun <A> run(p: Parser<A>, input: String): Either<Failure, Success<A>> {
-        return p.parse(Location(input = input, offset = 0))
+        return p.parse(State(input = input, offset = 0))
     }
 }

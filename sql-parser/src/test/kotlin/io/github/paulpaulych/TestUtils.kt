@@ -24,7 +24,7 @@ object TestUtils {
     }
 
     fun <A> ok(a: A, consumed: Int) = Either.Right(Success(a, consumed))
-    fun err(isCommitted: Boolean, stack: List<Pair<Location, String>>) =
+    fun err(isCommitted: Boolean, stack: List<Pair<State, String>>) =
         Either.Left(Failure(ParseError(stack.toList()), isCommitted))
 
 }

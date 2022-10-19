@@ -24,36 +24,36 @@ internal class TextParsersTest : DescribeSpec({
             row(string("ab"), "bbb", err(
                 isCommitted = false,
                 stack = listOf(
-                    Location("bbb", 0) to "expected",
-                    Location("bbb", 0) to "'ab'",
+                    State("bbb", 0) to "expected",
+                    State("bbb", 0) to "'ab'",
                 )
             )),
             row(string("ab"), "aaa", err(
                 isCommitted = true,
                 stack = listOf(
-                    Location("aaa", 1) to "expected",
-                    Location("aaa", 1) to "'ab'",
+                    State("aaa", 1) to "expected",
+                    State("aaa", 1) to "'ab'",
                 )
             )),
             row(string("aaa"), "aa", err(
                 isCommitted = true,
                 stack = listOf(
-                    Location("aa", 2) to "expected",
-                    Location("aa", 2) to "'aaa'",
+                    State("aa", 2) to "expected",
+                    State("aa", 2) to "'aaa'",
                 )
             )),
             row(string("aaa"), "bbb", err(
                 isCommitted = false,
                 stack = listOf(
-                    Location("bbb", 0) to "expected",
-                    Location("bbb", 0) to "'aaa'"
+                    State("bbb", 0) to "expected",
+                    State("bbb", 0) to "'aaa'"
                 )
             )),
             row(string("aaa"), "aab", err(
                 isCommitted = true,
                 stack = listOf(
-                    Location("aab", 2) to "expected",
-                    Location("aab", 2) to "'aaa'"
+                    State("aab", 2) to "expected",
+                    State("aab", 2) to "'aaa'"
                 )
             )),
         )
@@ -66,15 +66,15 @@ internal class TextParsersTest : DescribeSpec({
             row(regex(Regex("\\d+")), "aa11", err(
                 isCommitted = false,
                 stack = listOf(
-                    Location("aa11", 0) to "expected",
-                    Location("aa11", 0) to "expression matching regex (\\d+)",
+                    State("aa11", 0) to "expected",
+                    State("aa11", 0) to "expression matching regex (\\d+)",
                 )
             )),
             row(regex(Regex("\\d+")), "aa", err(
                 isCommitted = false,
                 stack = listOf(
-                    Location("aa", 0) to "expected",
-                    Location("aa", 0) to "expression matching regex (\\d+)"
+                    State("aa", 0) to "expected",
+                    State("aa", 0) to "expression matching regex (\\d+)"
                 )
             )),
         )
@@ -93,8 +93,8 @@ internal class TextParsersTest : DescribeSpec({
             row(string("abc") or { string("aaa") }, "aaavvv", err(
                 isCommitted = true,
                 stack = listOf(
-                    Location("aaavvv", 1) to "expected",
-                    Location("aaavvv", 1) to "'abc'",
+                    State("aaavvv", 1) to "expected",
+                    State("aaavvv", 1) to "'abc'",
                 )
             )),
             row(regex(Regex("\\d+")) or { string("aaa") }, "11aa", ok("11", consumed = 2)),
@@ -102,8 +102,8 @@ internal class TextParsersTest : DescribeSpec({
             row(string("bb") or { string("aa") }, "ccaabb", err(
                 isCommitted = false,
                 stack = listOf(
-                    Location("ccaabb", 0) to "expected",
-                    Location("ccaabb", 0) to "'aa'",
+                    State("ccaabb", 0) to "expected",
+                    State("ccaabb", 0) to "'aa'",
                 )
             )),
         )
@@ -118,15 +118,15 @@ internal class TextParsersTest : DescribeSpec({
             row(flatMap(string("a"), alphabeticallyNext), "acb", err(
                 isCommitted = false,
                 stack = listOf(
-                    Location("acb", 1) to "expected",
-                    Location("acb", 1) to "'b'",
+                    State("acb", 1) to "expected",
+                    State("acb", 1) to "'b'",
                 )
             )),
             row(flatMap(string("b"), alphabeticallyNext), "acb", err(
                 isCommitted = false,
                 stack = listOf(
-                    Location("acb", 0) to "expected",
-                    Location("acb", 0) to "'b'",
+                    State("acb", 0) to "expected",
+                    State("acb", 0) to "'b'",
                 )
             )),
         )
@@ -138,9 +138,9 @@ internal class TextParsersTest : DescribeSpec({
             row(scope("greeting", string("hello, ") and string("world").defer()), "hello, w0rld", err(
                 isCommitted = true,
                 stack = listOf(
-                    Location("hello, w0rld", 0) to "greeting",
-                    Location("hello, w0rld", 8) to "expected",
-                    Location("hello, w0rld", 8) to "'world'",
+                    State("hello, w0rld", 0) to "greeting",
+                    State("hello, w0rld", 8) to "expected",
+                    State("hello, w0rld", 8) to "'world'",
                 )
             )),
         )
