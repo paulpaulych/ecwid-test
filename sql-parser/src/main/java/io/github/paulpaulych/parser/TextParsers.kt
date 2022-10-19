@@ -10,20 +10,14 @@ object TextParsers {
         Parser { state: State ->
             when (val idx = firstNonMatchingIndex(s, state.input, state.offset)) {
                 null -> Right(Success(s, s.length))
-                else -> Left(Failure(
-                    error = state.advanceBy(idx).toError("'$s'").tag("expected"),
-                    isCommitted = idx != 0
-                ))
+                else -> Left(state.advanceBy(idx).toError("'$s'").tag("expected"))
             }
         }
 
     fun regex(regex: Regex): Parser<String> =
         Parser { location ->
             when (val prefix = location.input.findPrefixMatching(regex, location.offset)) {
-                null -> Left(Failure(
-                    error = location.toError("expression matching regex ($regex)").tag("expected"),
-                    isCommitted = false
-                ))
+                null -> Left(location.toError("expression matching regex ($regex)").tag("expected"))
                 else -> Right(Success(prefix, prefix.length))
             }
         }
@@ -34,9 +28,8 @@ object TextParsers {
     fun <A> or(pa: Parser<out A>, pb: () -> Parser<out A>): Parser<A> {
         return Parser { state ->
             val res = pa.parse(state)
-            res.flatMapLeft { failure ->
-                if (failure.isCommitted) res
-                else pb().parse(state)
+            res.flatMapLeft {
+                pb().parse(state)
             }
         }
     }
@@ -48,8 +41,6 @@ object TextParsers {
                 val pb = f(aSuccess.get)
                 val newLocation = location.advanceBy(aSuccess.consumed)
                 pb.parse(newLocation)
-                    //TODO commit = aSuccess.consumed != 0
-                    .mapLeft { failure -> failure.addCommit(false) }
                     .map { bSuccess ->
                         bSuccess.advanceConsumed(aSuccess.consumed)
                     }
@@ -58,18 +49,18 @@ object TextParsers {
 
     fun <A> scope(msg: String, p: Parser<A>): Parser<A> =
         Parser { state -> p.parse(state)
-            .mapLeft { failure -> failure.copy(error = failure.error.push(state, msg)) }
+            .mapLeft { error -> error.push(state, msg) }
         }
 
     fun <A> tag(msg: String, p: Parser<A>): Parser<A> =
         Parser { state ->
-            p.parse(state).mapLeft { failure -> failure.copy(error = failure.error.tag(msg)) }
+            p.parse(state).mapLeft { error -> error.tag(msg) }
         }
 
-    fun <A> attempt(p: Parser<A>): Parser<A> =
-        Parser { state -> p.parse(state).mapLeft { it.uncommit() }}
+//    fun <A> attempt(p: Parser<A>): Parser<A> =
+//        Parser { state -> p.parse(state).mapLeft { it.uncommit() }}
 
-    fun <A> run(p: Parser<A>, input: String): Either<Failure, Success<A>> {
+    fun <A> run(p: Parser<A>, input: String): Either<ParseError, Success<A>> {
         return p.parse(State(input = input, offset = 0))
     }
 }

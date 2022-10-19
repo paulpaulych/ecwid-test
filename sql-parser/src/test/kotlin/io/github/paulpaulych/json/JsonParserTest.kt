@@ -47,7 +47,6 @@ class JsonParserTest: DescribeSpec({
             )
         ) { input ->
             TextParsers.run(parser, input) shouldBe err(
-                isCommitted = false,
                 stack = listOf(
                     State(input, 0) to "expected",
                     State(input, 0) to "literal",

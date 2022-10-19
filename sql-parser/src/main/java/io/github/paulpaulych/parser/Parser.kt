@@ -3,7 +3,7 @@ package io.github.paulpaulych.parser
 import io.github.paulpaulych.common.Either
 
 fun interface Parser<A> {
-    fun parse(state: State): Either<Failure, Success<A>>
+    fun parse(state: State): Either<ParseError, Success<A>>
 }
 
 data class Success<out A>(
