@@ -3,6 +3,8 @@ package io.github.paulpaulych.parser
 import io.github.paulpaulych.TestUtils.err
 import io.github.paulpaulych.TestUtils.ok
 import io.github.paulpaulych.TestUtils.runParserTest
+import io.github.paulpaulych.parser.ErrorItem.ParseError
+import io.github.paulpaulych.parser.ErrorItem.ScopesTried
 import io.github.paulpaulych.parser.TextParsers.flatMap
 import io.github.paulpaulych.parser.TextParsers.regex
 import io.github.paulpaulych.parser.TextParsers.scope
@@ -22,33 +24,33 @@ internal class TextParsersTest : DescribeSpec({
             row(string("aa"), "aaa", ok("aa", consumed = 2)),
             row(string(""), "aaa", ok("", consumed = 0)),
             row(string("ab"), "bbb", err(
-                stack = listOf(
-                    State("bbb", 0) to "expected",
-                    State("bbb", 0) to "'ab'",
+                stack = StackTrace(
+                    state = State("bbb", 0),
+                    error = ParseError("'ab'", "expected 'ab'"),
                 )
             )),
             row(string("ab"), "aaa", err(
-                stack = listOf(
-                    State("aaa", 1) to "expected",
-                    State("aaa", 1) to "'ab'",
+                stack = StackTrace(
+                    state = State("aaa", 1),
+                    error = ParseError("'ab'", "expected 'ab'"),
                 )
             )),
             row(string("aaa"), "aa", err(
-                stack = listOf(
-                    State("aa", 2) to "expected",
-                    State("aa", 2) to "'aaa'",
+                stack = StackTrace(
+                    state = State("aa", 2),
+                    error = ParseError("'aaa'", "expected 'aaa'"),
                 )
             )),
             row(string("aaa"), "bbb", err(
-                stack = listOf(
-                    State("bbb", 0) to "expected",
-                    State("bbb", 0) to "'aaa'"
+                stack = StackTrace(
+                    state = State("bbb", 0),
+                    error = ParseError("'aaa'", "expected 'aaa'"),
                 )
             )),
             row(string("aaa"), "aab", err(
-                stack = listOf(
-                    State("aab", 2) to "expected",
-                    State("aab", 2) to "'aaa'"
+                stack = StackTrace(
+                    state = State("aab", 2),
+                    error = ParseError("'aaa'", "expected 'aaa'"),
                 )
             )),
         )
@@ -59,15 +61,15 @@ internal class TextParsersTest : DescribeSpec({
             row(regex(Regex("\\d+")), "11aa", ok("11", consumed = 2)),
             row(regex(Regex("\\d+")), "11", ok("11", consumed = 2)),
             row(regex(Regex("\\d+")), "aa11", err(
-                stack = listOf(
-                    State("aa11", 0) to "expected",
-                    State("aa11", 0) to "expression matching regex (\\d+)",
+                stack = StackTrace(
+                    state = State("aa11", 0),
+                    error = ParseError("expression matching regex '\\d+'", "expected expression matching regex '\\d+'"),
                 )
             )),
             row(regex(Regex("\\d+")), "aa", err(
-                stack = listOf(
-                    State("aa", 0) to "expected",
-                    State("aa", 0) to "expression matching regex (\\d+)"
+                stack = StackTrace(
+                    state = State("aa", 0),
+                    error = ParseError("expression matching regex '\\d+'", "expected expression matching regex '\\d+'"),
                 )
             )),
         )
@@ -87,9 +89,9 @@ internal class TextParsersTest : DescribeSpec({
             row(regex(Regex("\\d+")) or { string("aaa") }, "11aa", ok("11", consumed = 2)),
             row(regex(Regex("\\d+")) or { string("aaa") }, "aaa", ok("aaa", consumed = 3)),
             row(string("bb") or { string("aa") }, "ccaabb", err(
-                stack = listOf(
-                    State("ccaabb", 0) to "expected",
-                    State("ccaabb", 0) to "'aa'",
+                stack = StackTrace(
+                    state = State("ccaabb", 0),
+                    error = ScopesTried(listOf("'bb'", "'aa'"))
                 )
             )),
         )
@@ -102,15 +104,15 @@ internal class TextParsersTest : DescribeSpec({
         runParserTest(
             row(flatMap(string("a"), alphabeticallyNext), "abc", ok("b", consumed = 2)),
             row(flatMap(string("a"), alphabeticallyNext), "acb", err(
-                stack = listOf(
-                    State("acb", 1) to "expected",
-                    State("acb", 1) to "'b'",
+                stack = StackTrace(
+                    state = State("acb", 1),
+                    error = ParseError("'b'", "expected 'b'"),
                 )
             )),
             row(flatMap(string("b"), alphabeticallyNext), "acb", err(
-                stack = listOf(
-                    State("acb", 0) to "expected",
-                    State("acb", 0) to "'b'",
+                stack = StackTrace(
+                    state = State("acb", 0),
+                    error = ParseError("'b'", "expected 'b'"),
                 )
             )),
         )
@@ -118,12 +120,15 @@ internal class TextParsersTest : DescribeSpec({
 
     it("scope combinator") {
         runParserTest(
-            row(scope("greeting", string("hello, ") and string("world").defer()), "hello, world", ok(Pair("hello, ", "world"), consumed = 12)),
-            row(scope("greeting", string("hello, ") and string("world").defer()), "hello, w0rld", err(
-                stack = listOf(
-                    State("hello, w0rld", 0) to "greeting",
-                    State("hello, w0rld", 8) to "expected",
-                    State("hello, w0rld", 8) to "'world'",
+            row(scope("greeting", parser = string("hello, ") and string("world").defer()), "hello, world", ok(Pair("hello, ", "world"), consumed = 12)),
+            row(scope("greeting", parser = string("hello, ") and string("world").defer()), "hello, w0rld", err(
+                StackTrace(
+                    state = State("hello, w0rld", 0),
+                    error = ParseError("greeting", "invalid greeting syntax"),
+                    cause = StackTrace(
+                        state = State("hello, w0rld", 8),
+                        error = ParseError("'world'", "expected 'world'"),
+                    )
                 )
             )),
         )

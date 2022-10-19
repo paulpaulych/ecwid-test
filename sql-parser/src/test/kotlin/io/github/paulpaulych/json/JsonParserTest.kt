@@ -1,9 +1,12 @@
 package io.github.paulpaulych.json
 
-import io.github.paulpaulych.TestUtils.err
 import io.github.paulpaulych.TestUtils.ok
 import io.github.paulpaulych.TestUtils.runParserTest
+import io.github.paulpaulych.common.Either
 import io.github.paulpaulych.json.JSON.*
+import io.github.paulpaulych.parser.ErrorItem.ParseError
+import io.github.paulpaulych.parser.ErrorItem.ScopesTried
+import io.github.paulpaulych.parser.StackTrace
 import io.github.paulpaulych.parser.State
 import io.github.paulpaulych.parser.TextParsers
 import io.kotest.core.spec.style.DescribeSpec
@@ -11,6 +14,7 @@ import io.kotest.data.forAll
 import io.kotest.data.headers
 import io.kotest.data.row
 import io.kotest.data.table
+import io.kotest.matchers.collections.shouldContainExactly
 import io.kotest.matchers.shouldBe
 
 class JsonParserTest: DescribeSpec({
@@ -46,14 +50,22 @@ class JsonParserTest: DescribeSpec({
                 row("\t"),
             )
         ) { input ->
-            TextParsers.run(parser, input) shouldBe err(
-                stack = listOf(
-                    State(input, 0) to "expected",
-                    State(input, 0) to "literal",
-                    State(input, 0) to "expected",
-                    State(input, 0) to "'\"'",
-                )
-            )
+            val res = TextParsers.run(parser, input)
+            with((res as Either.Left<StackTrace>).value) {
+                state shouldBe State(input, 0)
+                error shouldBe ParseError("literal", "invalid literal syntax")
+                with(checkNotNull(cause)) {
+                    state shouldBe State(input, 0)
+                    (error as ScopesTried).scopes shouldContainExactly listOf(
+                        "'null'",
+                        "expression matching regex '[-+]?(\\d*\\.)?\\d+([eE][-+]?\\d+)?'",
+                        "'true'",
+                        "'false'",
+                        "'\"'"
+                    )
+                    cause shouldBe null
+                }
+            }
         }
     }
 

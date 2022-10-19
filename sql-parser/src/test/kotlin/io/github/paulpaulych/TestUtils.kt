@@ -11,7 +11,7 @@ import io.kotest.matchers.shouldBe
 object TestUtils {
 
     fun <A> runParserTest(
-        vararg cases: Row3<Parser<A>, String, Either<ParseError, Success<A>>>
+        vararg cases: Row3<Parser<A>, String, Either<StackTrace, Success<A>>>
     ) {
         forAll(
             table(
@@ -24,7 +24,6 @@ object TestUtils {
     }
 
     fun <A> ok(a: A, consumed: Int) = Either.Right(Success(a, consumed))
-    fun err(stack: List<Pair<State, String>>) =
-        Either.Left(ParseError(stack.toList()))
+    fun err(stack: StackTrace) = Either.Left(stack)
 
 }

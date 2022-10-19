@@ -20,6 +20,3 @@ data class State(
         return this.copy(offset = offset + i)
     }
 }
-
-fun State.toError(msg: String) =
-    ParseError(listOf(this to msg))

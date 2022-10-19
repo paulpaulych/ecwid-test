@@ -3,6 +3,7 @@ package io.github.paulpaulych.parser
 import io.github.paulpaulych.common.*
 import io.github.paulpaulych.common.Either.Left
 import io.github.paulpaulych.common.Either.Right
+import io.github.paulpaulych.parser.ErrorItem.ParseError
 
 object TextParsers {
 
@@ -10,14 +11,28 @@ object TextParsers {
         Parser { state: State ->
             when (val idx = firstNonMatchingIndex(s, state.input, state.offset)) {
                 null -> Right(Success(s, s.length))
-                else -> Left(state.advanceBy(idx).toError("'$s'").tag("expected"))
+                else -> {
+                    val scope = "'$s'"
+                    Left(StackTrace(
+                        state = state.advanceBy(idx),
+                        error = ParseError(scope = scope, message = "expected $scope"),
+                        cause = null
+                    ))
+                }
             }
         }
 
     fun regex(regex: Regex): Parser<String> =
         Parser { location ->
             when (val prefix = location.input.findPrefixMatching(regex, location.offset)) {
-                null -> Left(location.toError("expression matching regex ($regex)").tag("expected"))
+                null -> {
+                    val scope = "expression matching regex '$regex'"
+                    Left(StackTrace(
+                        state = location,
+                        error = ParseError(scope = scope, "expected $scope"),
+                        cause = null
+                    ))
+                }
                 else -> Right(Success(prefix, prefix.length))
             }
         }
@@ -27,9 +42,12 @@ object TextParsers {
 
     fun <A> or(pa: Parser<out A>, pb: () -> Parser<out A>): Parser<A> {
         return Parser { state ->
-            val res = pa.parse(state)
-            res.flatMapLeft {
-                pb().parse(state)
+            val firstRes = pa.parse(state)
+            firstRes.flatMapLeft { firstStackTrace ->
+                val secondRes = pb().parse(state)
+                secondRes.mapLeft { secondStackTrace ->
+                    firstStackTrace.appendFailedScopes(secondStackTrace.error.failedScopes())
+                }
             }
         }
     }
@@ -47,20 +65,19 @@ object TextParsers {
             }
         }
 
-    fun <A> scope(msg: String, p: Parser<A>): Parser<A> =
-        Parser { state -> p.parse(state)
-            .mapLeft { error -> error.push(state, msg) }
-        }
+    fun <A> scope(
+        scope: String,
+        msg: String = "invalid $scope syntax",
+        parser: Parser<A>
+    ): Parser<A> = Parser { state ->
+        parser
+            .parse(state)
+            .mapLeft { stackTrace ->
+                stackTrace.addSegment(state, scope, msg)
+            }
+    }
 
-    fun <A> tag(msg: String, p: Parser<A>): Parser<A> =
-        Parser { state ->
-            p.parse(state).mapLeft { error -> error.tag(msg) }
-        }
-
-//    fun <A> attempt(p: Parser<A>): Parser<A> =
-//        Parser { state -> p.parse(state).mapLeft { it.uncommit() }}
-
-    fun <A> run(p: Parser<A>, input: String): Either<ParseError, Success<A>> {
+    fun <A> run(p: Parser<A>, input: String): Either<StackTrace, Success<A>> {
         return p.parse(State(input = input, offset = 0))
     }
 }

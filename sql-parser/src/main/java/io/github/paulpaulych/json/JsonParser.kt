@@ -16,7 +16,6 @@ import io.github.paulpaulych.parser.TextParsersDsl.thru
 import io.github.paulpaulych.parser.TextParsers.string
 import io.github.paulpaulych.parser.TextParsersDsl.defer
 import io.github.paulpaulych.parser.TextParsersDsl.scope
-import io.github.paulpaulych.parser.TextParsersDsl.tag
 
 object JsonParser {
 
@@ -39,12 +38,12 @@ object JsonParser {
         NULL or
             double.map(::JNumber).defer() or
             boolean.map(::JBoolean).defer() or
-            quoted.map(::JString).defer() scope "literal" tag "expected"
+            quoted.map(::JString).defer() scope "literal"
 
-    fun value() = literal or ::obj or ::arr
+    fun json() = literal or ::obj or ::arr
 
     fun objEntry(): Parser<Pair<String, JSON>> =
-        quoted skipR (ws and ":".parser.defer() and ws.defer()) and value().defer()
+        quoted skipR (ws and ":".parser.defer() and ws.defer()) and json().defer()
 
     fun obj(): Parser<JSON> = surround(
         start = "{".parser and ws,
@@ -52,9 +51,7 @@ object JsonParser {
         parser = (objEntry() sepBy (ws skipL ",".parser skipR ws)).map { kvs -> JObject(kvs.toMap()) }
     )
 
-    val ws: Parser<String> = Regex("[\u0020\u0009\u000A\u000D]*").parser
-
-    fun <A> Parser<A>.withWs() = this skipR ws
+    private val ws: Parser<String> = Regex("[\u0020\u0009\u000A\u000D]*").parser
 
     fun s(s: String) = string(s)
     fun r(regex: Regex) = regex(regex)
@@ -62,10 +59,6 @@ object JsonParser {
     fun arr(): Parser<JSON> = surround(
         start = s("[") and ws,
         stop = ws and s("]"),
-        parser = (value() sepBy (ws skipL s(",") skipR ws)).map { vs -> JArray(vs) }
+        parser = (json() sepBy (ws skipL s(",") skipR ws)).map { vs -> JArray(vs) }
     )
-
-    val eof: Parser<String> = r(Regex("\\z*"))
-
-    val jsonParser = ws skipL value() skipR eof
 }
