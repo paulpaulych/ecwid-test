@@ -4,7 +4,7 @@ import io.github.paulpaulych.parser.TextParsers.flatMap
 import io.github.paulpaulych.parser.TextParsers.or
 import io.github.paulpaulych.parser.TextParsers.string
 import io.github.paulpaulych.parser.TextParsers.regex
-import io.github.paulpaulych.parser.TextParsers.scope
+import io.github.paulpaulych.parser.TextParsers.scoped
 import io.github.paulpaulych.parser.TextParsers.succeed
 import java.util.regex.Pattern
 
@@ -23,10 +23,10 @@ object TextParsersDsl {
     }
 
     infix fun <A> Parser<A>.scope(scope: String): Parser<A> =
-        scope(scope, parser = this)
+        scoped(scope, parser = this)
 
     fun <A> Parser<A>.scope(scope: String, msg: String): Parser<A> =
-        scope(scope, msg, this)
+        scoped(scope, msg, this)
 
     infix fun <A> Parser<out A>.or(pb: () -> Parser<out A>): Parser<A> {
         return or(this, pb)

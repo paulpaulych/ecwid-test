@@ -65,7 +65,7 @@ object TextParsers {
             }
         }
 
-    fun <A> scope(
+    fun <A> scoped(
         scope: String,
         msg: String = "invalid $scope syntax",
         parser: Parser<A>

@@ -7,7 +7,7 @@ import io.github.paulpaulych.parser.ErrorItem.ParseError
 import io.github.paulpaulych.parser.ErrorItem.ScopesTried
 import io.github.paulpaulych.parser.TextParsers.flatMap
 import io.github.paulpaulych.parser.TextParsers.regex
-import io.github.paulpaulych.parser.TextParsers.scope
+import io.github.paulpaulych.parser.TextParsers.scoped
 import io.github.paulpaulych.parser.TextParsers.string
 import io.github.paulpaulych.parser.TextParsers.succeed
 import io.github.paulpaulych.parser.TextParsersDsl.defer
@@ -120,8 +120,8 @@ internal class TextParsersTest : DescribeSpec({
 
     it("scope combinator") {
         runParserTest(
-            row(scope("greeting", parser = string("hello, ") and string("world").defer()), "hello, world", ok(Pair("hello, ", "world"), consumed = 12)),
-            row(scope("greeting", parser = string("hello, ") and string("world").defer()), "hello, w0rld", err(
+            row(scoped("greeting", parser = string("hello, ") and string("world").defer()), "hello, world", ok(Pair("hello, ", "world"), consumed = 12)),
+            row(scoped("greeting", parser = string("hello, ") and string("world").defer()), "hello, w0rld", err(
                 StackTrace(
                     state = State("hello, w0rld", 0),
                     error = ParseError("greeting", "invalid greeting syntax"),

@@ -57,13 +57,11 @@ class JsonParserTest: DescribeSpec({
                 with(checkNotNull(cause)) {
                     state shouldBe State(input, 0)
                     (error as ScopesTried).scopes shouldContainExactly listOf(
-                        "'null'",
-                        "expression matching regex '[-+]?(\\d*\\.)?\\d+([eE][-+]?\\d+)?'",
-                        "'true'",
-                        "'false'",
-                        "'\"'"
+                        "null",
+                        "number",
+                        "boolean",
+                        "string"
                     )
-                    cause shouldBe null
                 }
             }
         }
@@ -78,6 +76,27 @@ class JsonParserTest: DescribeSpec({
             row(parser, "\"k\": true", ok(Pair("k", JBoolean(true)), 9)),
             row(parser, "\"k\" \t\n\r\n\t  : \ttrue", ok(Pair("k", JBoolean(true)), 18)),
         )
+
+        forAll(
+            table(
+                headers("input", "error"),
+                row("bla") { e: StackTrace ->
+                    e.error shouldBe ParseError("object entry", "invalid object entry")
+                },
+                row("123") { e: StackTrace ->
+                    e.error shouldBe ParseError("object entry", "invalid object entry")
+                    e.cause?.error shouldBe ParseError("string", "expected quoted string")
+                    e.cause?.cause?.error shouldBe ParseError("'\"'", "expected '\"'")
+                },
+                row("\"key\":abne") { e: StackTrace ->
+                    e.error shouldBe ParseError("object entry", "invalid object entry")
+                    e.cause?.error shouldBe ScopesTried(listOf("literal", "object", "array"))
+                },
+            )
+        ) { input, matcher ->
+            val res = TextParsers.run(parser, input)
+            matcher((res as Either.Left).value)
+        }
     }
 
     it("json array parser") {
