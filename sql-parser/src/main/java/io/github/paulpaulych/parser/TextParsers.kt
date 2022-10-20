@@ -90,6 +90,13 @@ object TextParsers {
             }
     }
 
+    fun <A> optional(parser: Parser<A>): Parser<A?> =
+        Parser { state ->
+            parser.parse(state).flatMapLeft { succeed(null).parse(state) }
+        }
+
+    fun <A> Parser<A>.opt(): Parser<A?> = optional(this)
+
     fun <A> run(p: Parser<A>, input: String): Either<StackTrace, Success<A>> {
         return p.parse(State(input = input, offset = 0))
     }

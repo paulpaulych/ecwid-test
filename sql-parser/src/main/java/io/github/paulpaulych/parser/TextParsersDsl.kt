@@ -41,6 +41,8 @@ object TextParsersDsl {
 
     infix fun <A, B> Parser<A>.and(pb: Parser<B>): Parser<Pair<A, B>> = map2(this, pb.defer()) { a, b -> Pair(a, b) }
 
+    operator fun <A, B> Parser<A>.plus(pb: Parser<B>): Parser<Pair<A, B>> = map2(this, pb.defer()) { a, b -> Pair(a, b) }
+
     infix fun <A, B> Parser<A>.skipR(p: Parser<B>): Parser<A> =
         (this and { p }).map { it.first }
 

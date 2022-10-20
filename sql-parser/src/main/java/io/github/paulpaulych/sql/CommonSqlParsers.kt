@@ -1,6 +1,7 @@
 package io.github.paulpaulych.sql
 
 import io.github.paulpaulych.parser.Parser
+import io.github.paulpaulych.parser.TextParsers.opt
 import io.github.paulpaulych.parser.TextParsers.or
 import io.github.paulpaulych.parser.TextParsers.regex
 import io.github.paulpaulych.parser.TextParsers.scoped
@@ -8,6 +9,7 @@ import io.github.paulpaulych.parser.TextParsers.string
 import io.github.paulpaulych.parser.TextParsersDsl
 import io.github.paulpaulych.parser.TextParsersDsl.defer
 import io.github.paulpaulych.parser.TextParsersDsl.map
+import io.github.paulpaulych.parser.TextParsersDsl.plus
 import io.github.paulpaulych.parser.TextParsersDsl.skipL
 
 object CommonSqlParsers {
@@ -18,7 +20,13 @@ object CommonSqlParsers {
 
     fun r(regex: Regex) = regex(regex)
 
-    fun column(): Parser<Column> = TODO()
+    val latinWord: Parser<String> = r(Regex("[a-zA-Z_]\\w*"))
+
+    val column: Parser<Column> = scoped(
+        scope = "column",
+        parser = (latinWord + (s(".") skipL latinWord).opt())
+            .map { (l, r) -> r?.let { Column(r, l) } ?: Column(l, null) }
+    )
 
     val double: Parser<Double> = scoped(
         scope = "double",

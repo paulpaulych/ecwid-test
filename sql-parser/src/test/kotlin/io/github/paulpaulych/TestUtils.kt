@@ -1,6 +1,7 @@
 package io.github.paulpaulych
 
 import io.github.paulpaulych.common.Either
+import io.github.paulpaulych.common.Either.Left
 import io.github.paulpaulych.common.Either.Right
 import io.github.paulpaulych.parser.*
 import io.kotest.data.*
@@ -8,7 +9,7 @@ import io.kotest.matchers.shouldBe
 
 object TestUtils {
 
-    fun <A> runParserSuccessCases(
+    fun <A> expectSuccess(
         parser: Parser<A>,
         vararg cases: Pair<String, A>,
     ) {
@@ -21,6 +22,22 @@ object TestUtils {
             val res = TextParsers.run(parser, source)
             res as Right
             res.value.get shouldBe expected
+        }
+    }
+
+    fun <A> expectFailure(
+        parser: Parser<A>,
+        vararg cases: Pair<String, StackTrace.() -> Unit>
+    ) {
+        forAll(
+            table(
+                headers("input", "matcher"),
+                *cases.map { (a, b) -> row(a, b) }.toTypedArray(),
+            )
+        ) { source, matcher ->
+            val res = TextParsers.run(parser, source)
+            res as Left
+            matcher(res.value)
         }
     }
 
@@ -38,6 +55,6 @@ object TestUtils {
     }
 
     fun <A> ok(a: A, consumed: Int) = Right(Success(a, consumed))
-    fun err(stack: StackTrace) = Either.Left(stack)
+    fun err(stack: StackTrace) = Left(stack)
 
 }
