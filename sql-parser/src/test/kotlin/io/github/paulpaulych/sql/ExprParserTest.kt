@@ -4,6 +4,14 @@ import io.kotest.core.spec.style.DescribeSpec
 
 class ExprParserTest: DescribeSpec({
 
+    /*
+        TODO: wildcard allowed flag
+         columns: true
+         where: false
+         having: true
+         join: false
+     */
+
     //language=sql
     val sqlId = listOf(
         "some_table_name",
@@ -60,12 +68,13 @@ class ExprParserTest: DescribeSpec({
         "''",
 
         "null",
-    )
 
+        "(select * from table_a)"
+    )
 
     //language=sql
     val invalid = listOf(
-        ""
+        "",
     )
 
 })
