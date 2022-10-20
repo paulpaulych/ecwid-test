@@ -1,8 +1,14 @@
 package io.github.paulpaulych.sql
 
+import io.github.paulpaulych.TestUtils.expectFailure
 import io.github.paulpaulych.TestUtils.expectSuccess
+import io.github.paulpaulych.parser.ErrorItem.ParseError
 import io.github.paulpaulych.sql.Expr.LitExpr.*
+import io.github.paulpaulych.sql.Expr.SelectableExpr.ColumnExpr
+import io.github.paulpaulych.sql.Expr.SelectableExpr.WildcardExpr
+import io.github.paulpaulych.sql.SqlScopes.SELECTABLE_EXPR
 import io.kotest.core.spec.style.DescribeSpec
+import io.kotest.matchers.shouldBe
 
 class ExprParserTest: DescribeSpec({
 
@@ -70,6 +76,32 @@ class ExprParserTest: DescribeSpec({
             "+1.25E2" to DoubleLitExpr(+1.25E2),
             "false" to BoolLitExpr(false),
             "true" to BoolLitExpr(true)
+        )
+    }
+
+    it("selectable expr") {
+        expectSuccess(ExprParser(wildcardAllowed = false).selectableExpr(),
+            "table.col" to ColumnExpr(Column("col", "table")),
+            "col" to ColumnExpr(Column("col", null)),
+            "schema.table.col" to ColumnExpr(Column("col", "schema.table")),
+        )
+
+        expectSuccess(ExprParser(wildcardAllowed = true).selectableExpr(),
+            "table.col" to ColumnExpr(Column("col", "table")),
+            "table.*" to WildcardExpr(Wildcard("table")),
+            "schema.table.*" to WildcardExpr(Wildcard("schema.table")),
+        )
+
+        expectFailure(ExprParser(wildcardAllowed = false).selectableExpr(),
+            "" to {
+                error shouldBe ParseError(SELECTABLE_EXPR.get, "expected column")
+            },
+        )
+
+        expectFailure(ExprParser(wildcardAllowed = true).selectableExpr(),
+            "" to {
+                error shouldBe ParseError(SELECTABLE_EXPR.get, "expected column or wildcard")
+            },
         )
     }
 })

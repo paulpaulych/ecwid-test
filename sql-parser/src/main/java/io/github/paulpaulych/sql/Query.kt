@@ -46,10 +46,14 @@ data class Column(
     val source: String?
 )
 
+data class Wildcard(
+    val source: String?,
+): SelectableColumns
+
 sealed interface SelectableColumns {
 
-    data class Wildcard(
-        val sourceAlias: String?,
+    data class ColumnsSet(
+        val wildcard: Wildcard
     ): SelectableColumns
 
     data class ExprColumn(
@@ -70,7 +74,7 @@ sealed interface Expr {
 
     sealed interface SelectableExpr {
         data class ColumnExpr(val column: Column): SelectableExpr
-        data class WildcardExpr(val sourceAlias: String?): SelectableExpr
+        data class WildcardExpr(val wildcard: Wildcard?): SelectableExpr
     }
 
     data class NotExpr(val expr: Expr): Expr

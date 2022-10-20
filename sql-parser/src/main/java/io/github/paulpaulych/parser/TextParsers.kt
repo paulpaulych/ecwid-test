@@ -97,6 +97,9 @@ object TextParsers {
 
     fun <A> Parser<A>.opt(): Parser<A?> = optional(this)
 
+    fun <A> Parser<A>.attempt(): Parser<A> =
+        Parser { state -> this.parse(state).mapLeft { it.uncommit() }}
+
     fun <A> run(p: Parser<A>, input: String): Either<StackTrace, Success<A>> {
         return p.parse(State(input = input, offset = 0))
     }

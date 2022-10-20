@@ -1,16 +1,17 @@
 package io.github.paulpaulych.sql
 
 import io.github.paulpaulych.parser.Parser
-import io.github.paulpaulych.parser.TextParsers.opt
 import io.github.paulpaulych.parser.TextParsers.or
 import io.github.paulpaulych.parser.TextParsers.regex
 import io.github.paulpaulych.parser.TextParsers.scoped
 import io.github.paulpaulych.parser.TextParsers.string
 import io.github.paulpaulych.parser.TextParsersDsl
 import io.github.paulpaulych.parser.TextParsersDsl.defer
+import io.github.paulpaulych.parser.TextParsersDsl.many
 import io.github.paulpaulych.parser.TextParsersDsl.map
-import io.github.paulpaulych.parser.TextParsersDsl.plus
+import io.github.paulpaulych.parser.TextParsersDsl.sepBy1
 import io.github.paulpaulych.parser.TextParsersDsl.skipL
+import io.github.paulpaulych.parser.TextParsersDsl.skipR
 
 object CommonSqlParsers {
 
@@ -20,12 +21,27 @@ object CommonSqlParsers {
 
     fun r(regex: Regex) = regex(regex)
 
-    val latinWord: Parser<String> = r(Regex("[a-zA-Z_]\\w*"))
+    private val latinWord: Parser<String> = r(Regex("[a-zA-Z_][a-zA-Z0-9_]*"))
 
     val column: Parser<Column> = scoped(
         scope = "column",
-        parser = (latinWord + (s(".") skipL latinWord).opt())
-            .map { (l, r) -> r?.let { Column(r, l) } ?: Column(l, null) }
+        parser = (latinWord sepBy1 s("."))
+            .map { segments ->
+                Column(
+                    name = segments.last(),
+                    source = segments.dropLast(1).joinToString(".").takeIf { it.isNotEmpty() }
+                )
+            }
+    )
+
+    val wildcard: Parser<Wildcard> = scoped(
+        scope = "wildcard",
+        parser = (latinWord skipR s(".")).many().skipR(s("*"))
+            .map { sourceSegments ->
+                Wildcard(
+                    source = sourceSegments.joinToString(".").takeIf { it.isNotEmpty() }
+                )
+            }
     )
 
     val double: Parser<Double> = scoped(

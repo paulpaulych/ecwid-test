@@ -17,6 +17,10 @@ data class StackTrace(
         )
     }
 
+    fun uncommit(): StackTrace {
+        return this.copy(isCommitted = false)
+    }
+
     fun appendCommitted(isCommitted: Boolean): StackTrace {
         return this.copy(isCommitted = this.isCommitted || isCommitted)
     }

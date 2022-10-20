@@ -59,10 +59,16 @@ object TextParsersDsl {
         regex(Regex(".*?${Pattern.quote(s)}"))
 
     infix fun <A> Parser<A>.sepBy(sep: Parser<String>): Parser<List<A>> {
-        val aWithSep = sep skipL this
-        val notEmptyList = map2(this, { aWithSep.many() }) { a, la ->
+        val notEmptyList = map2(this, { (sep skipL this).many() }) { a, la ->
             listOf(a) + la
         }
         return notEmptyList or { succeed(listOf()) }
+    }
+
+    infix fun <A> Parser<A>.sepBy1(sep: Parser<String>): Parser<List<A>> {
+        val notEmptyList = map2(this, { (sep skipL this).many() }) { a, la ->
+            listOf(a) + la
+        }
+        return notEmptyList
     }
 }
