@@ -25,23 +25,6 @@ class ExprParserTest: DescribeSpec({
      */
 
     //language=sql
-    val sqlId = listOf(
-        "some_table_name",
-        "soMe_function_name",
-        "some_schema.some_table_name",
-        "some_schema.some_function_name",
-    )
-
-    //language=sql
-    val logical = listOf(
-        "not(false)",
-        "not('1')",
-
-        "false and true",
-        "(false or true) or not(false)",
-    )
-
-    //language=sql
     val comparison = listOf(
         "a = b",
         "a != b",
@@ -152,6 +135,29 @@ class ExprParserTest: DescribeSpec({
             },
             "true and  )" to {
                 error shouldBe ParseError("expression", "invalid expression syntax")
+            },
+        )
+    }
+
+    it("function invocation expression") {
+        expectSuccess(ExprParser(wildcardAllowed = false).funExpr(),
+            "blabla(false)" to FunExpr(
+                function = SqlId(null, "blabla"),
+                args = listOf(BoolLitExpr(false))
+            ),
+            "some_func()" to FunExpr(
+                function = SqlId(null, "some_func"),
+                args = listOf()
+            ),
+            "schema.blabla(\t false  \n,true,'a')" to FunExpr(
+                function = SqlId("schema", "blabla"),
+                args = listOf(BoolLitExpr(false), BoolLitExpr(true), StrLitExpr("a"))
+            ),
+        )
+
+        expectFailure(ExprParser(wildcardAllowed = false).funExpr(),
+            "func(" to {
+                error shouldBe ParseError("')'", "expected ')'")
             },
         )
     }

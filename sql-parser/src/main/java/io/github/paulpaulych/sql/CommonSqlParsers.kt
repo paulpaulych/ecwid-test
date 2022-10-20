@@ -25,7 +25,7 @@ object CommonSqlParsers {
 
     fun r(regex: Regex) = regex(regex)
 
-    private val latinWord: Parser<String> = r(Regex("[a-zA-Z_][a-zA-Z0-9_]*"))
+    val latinWord: Parser<String> = r(Regex("[a-zA-Z_]\\w*"))
 
     val column: Parser<Column> = scoped(
         scope = "column",
@@ -73,7 +73,9 @@ object CommonSqlParsers {
         parser = s("\'") skipL TextParsersDsl.thru("\'").map { it.dropLast(1) }
     )
 
-    @JvmName("inParenthesesExt")
     fun <A> Parser<A>.inParentheses(): Parser<A> =
+        { this }.inParentheses()
+
+    fun <A> (() -> Parser<A>).inParentheses(): Parser<A> =
         surround(s("("), s(")"), this)
 }

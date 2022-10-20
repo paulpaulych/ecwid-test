@@ -57,8 +57,14 @@ object TextParsersDsl {
     fun <A> surround(
         start: Parser<*>,
         stop: Parser<*>,
-        parser: Parser<A>
+        parser: () -> Parser<A>
     ): Parser<A> = start skipL parser skipR stop
+
+    fun <A> surround(
+        start: Parser<*>,
+        stop: Parser<*>,
+        parser: Parser<A>
+    ): Parser<A> = surround(start, stop, parser.defer())
 
     fun thru(s: String): Parser<String> =
         regex(Regex(".*?${Pattern.quote(s)}"))

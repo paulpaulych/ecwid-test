@@ -2,11 +2,14 @@ package io.github.paulpaulych.sql
 
 import io.github.paulpaulych.parser.Parser
 import io.github.paulpaulych.parser.TextParsers.attempt
+import io.github.paulpaulych.parser.TextParsers.optional
 import io.github.paulpaulych.parser.TextParsers.scoped
+import io.github.paulpaulych.parser.TextParsersDsl.and
 import io.github.paulpaulych.parser.TextParsersDsl.defer
 import io.github.paulpaulych.parser.TextParsersDsl.map
 import io.github.paulpaulych.parser.TextParsersDsl.or
 import io.github.paulpaulych.parser.TextParsersDsl.plus
+import io.github.paulpaulych.parser.TextParsersDsl.sepBy
 import io.github.paulpaulych.parser.TextParsersDsl.skipL
 import io.github.paulpaulych.parser.TextParsersDsl.skipR
 import io.github.paulpaulych.sql.CommonSqlParsers.boolean
@@ -14,6 +17,7 @@ import io.github.paulpaulych.sql.CommonSqlParsers.column
 import io.github.paulpaulych.sql.CommonSqlParsers.double
 import io.github.paulpaulych.sql.CommonSqlParsers.inParentheses
 import io.github.paulpaulych.sql.CommonSqlParsers.int
+import io.github.paulpaulych.sql.CommonSqlParsers.latinWord
 import io.github.paulpaulych.sql.CommonSqlParsers.quoted
 import io.github.paulpaulych.sql.CommonSqlParsers.s
 import io.github.paulpaulych.sql.CommonSqlParsers.sOrS
@@ -108,7 +112,14 @@ class ExprParser(
             }
     }
 
-    fun funExpr(): Parser<FunExpr> = TODO()
+    fun funExpr(): Parser<FunExpr> =
+        (latinWord skipR s(".")).optional()
+            .and(latinWord)
+            .and(((ws skipL ::expr skipR ws) sepBy s(",")).inParentheses())
+            .map { (a, args) ->
+                val (schema, name) = a
+                FunExpr(SqlId(schema, name), args)
+            }
 
     fun queryExpr(): Parser<QueryExpr> = TODO()
 }

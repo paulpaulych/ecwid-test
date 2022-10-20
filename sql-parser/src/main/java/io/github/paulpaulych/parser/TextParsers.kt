@@ -4,6 +4,8 @@ import io.github.paulpaulych.common.*
 import io.github.paulpaulych.common.Either.Left
 import io.github.paulpaulych.common.Either.Right
 import io.github.paulpaulych.parser.ErrorItem.ParseError
+import io.github.paulpaulych.parser.TextParsersDsl.defer
+import io.github.paulpaulych.parser.TextParsersDsl.or
 
 object TextParsers {
 
@@ -90,12 +92,8 @@ object TextParsers {
             }
     }
 
-    fun <A> optional(parser: Parser<A>): Parser<A?> =
-        Parser { state ->
-            parser.parse(state).flatMapLeft { succeed(null).parse(state) }
-        }
-
-    fun <A> Parser<A>.opt(): Parser<A?> = optional(this)
+    fun <A> Parser<A>.optional(): Parser<A?> =
+        this.attempt() or succeed(null).defer()
 
     fun <A> Parser<A>.attempt(): Parser<A> =
         Parser { state -> this.parse(state).mapLeft { it.uncommit() }}

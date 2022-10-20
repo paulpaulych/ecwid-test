@@ -89,7 +89,7 @@ sealed interface Expr {
 
     data class Op2Expr(val op: Op2Type, val left: Expr, val right: Expr): Expr
 
-    data class FunExpr(val func: SqlId, val args: List<Expr>): Expr
+    data class FunExpr(val function: SqlId, val args: List<Expr>): Expr
 
     data class QueryExpr(val query: Query): Expr
 }
