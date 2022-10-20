@@ -9,15 +9,19 @@ import io.github.paulpaulych.parser.TextParsersDsl
 import io.github.paulpaulych.parser.TextParsersDsl.defer
 import io.github.paulpaulych.parser.TextParsersDsl.many
 import io.github.paulpaulych.parser.TextParsersDsl.map
+import io.github.paulpaulych.parser.TextParsersDsl.or
 import io.github.paulpaulych.parser.TextParsersDsl.sepBy1
 import io.github.paulpaulych.parser.TextParsersDsl.skipL
 import io.github.paulpaulych.parser.TextParsersDsl.skipR
+import io.github.paulpaulych.parser.TextParsersDsl.surround
 
 object CommonSqlParsers {
 
     val ws: Parser<String> = r(Regex("[\u0020\u0009\u000A\u000D]*"))
 
     fun s(s: String) = string(s)
+
+    fun sOrS(text: String) = s(text.lowercase()) or s(text.uppercase()).defer()
 
     fun r(regex: Regex) = regex(regex)
 
@@ -46,7 +50,7 @@ object CommonSqlParsers {
 
     val double: Parser<Double> = scoped(
         scope = "double",
-        parser = r(Regex("[-+]?\\d+\\.\\d+([eE][-+]?\\d+)?"))
+        parser = r(Regex("\\d+\\.\\d+([eE][-+]?\\d+)?"))
             .map { it.toDouble() }
     )
 
@@ -68,4 +72,8 @@ object CommonSqlParsers {
         msg = "expected quoted string",
         parser = s("\'") skipL TextParsersDsl.thru("\'").map { it.dropLast(1) }
     )
+
+    @JvmName("inParenthesesExt")
+    fun <A> Parser<A>.inParentheses(): Parser<A> =
+        surround(s("("), s(")"), this)
 }

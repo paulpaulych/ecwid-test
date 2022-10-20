@@ -3,6 +3,8 @@ package io.github.paulpaulych.sql
 enum class SqlScopes(
     val get: String
 ) {
+    EXPR("expression"),
+
     LITERAL("SQL literal"),
     NULL("null"),
 

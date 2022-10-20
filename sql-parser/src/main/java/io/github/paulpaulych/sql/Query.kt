@@ -62,6 +62,14 @@ sealed interface SelectableColumns {
     ): SelectableColumns
 }
 
+enum class Op1Type {
+    UN_MINUS, UN_PLUS, NOT
+}
+
+enum class Op2Type {
+    OR, AND, EQ, NEQ, GT, GTE, LT, LTE
+}
+
 sealed interface Expr {
 
     sealed interface LitExpr: Expr {
@@ -72,22 +80,14 @@ sealed interface Expr {
         object SqlNullExpr: LitExpr
     }
 
-    sealed interface SelectableExpr {
+    sealed interface SelectableExpr: Expr {
         data class ColumnExpr(val column: Column): SelectableExpr
         data class WildcardExpr(val wildcard: Wildcard?): SelectableExpr
     }
 
-    data class NotExpr(val expr: Expr): Expr
+    data class Op1Expr(val op: Op1Type, val arg: Expr): Expr
 
-    data class OrExpr(val left: Expr, val right: Expr): Expr
-    data class AndExpr(val left: Expr, val right: Expr): Expr
-
-    data class EqExpr(val left: Expr, val right: Expr): Expr
-    data class NeqExpr(val left: Expr, val right: Expr): Expr
-    data class GExpr(val left: Expr, val right: Expr): Expr
-    data class GoeExpr(val left: Expr, val right: Expr): Expr
-    data class LExpr(val left: Expr, val right: Expr): Expr
-    data class LoeExpr(val left: Expr, val right: Expr): Expr
+    data class Op2Expr(val op: Op2Type, val left: Expr, val right: Expr): Expr
 
     data class FunExpr(val func: SqlId, val args: List<Expr>): Expr
 

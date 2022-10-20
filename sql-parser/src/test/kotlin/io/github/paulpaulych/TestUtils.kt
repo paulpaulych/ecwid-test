@@ -4,8 +4,10 @@ import io.github.paulpaulych.common.Either
 import io.github.paulpaulych.common.Either.Left
 import io.github.paulpaulych.common.Either.Right
 import io.github.paulpaulych.parser.*
+import io.kotest.assertions.withClue
 import io.kotest.data.*
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.types.instanceOf
 
 object TestUtils {
 
@@ -20,8 +22,11 @@ object TestUtils {
             )
         ) { source, expected ->
             val res = TextParsers.run(parser, source)
-            res as Right
-            res.value.get shouldBe expected
+            withClue(res) {
+                res shouldBe instanceOf<Right<Success<A>>>()
+                res as Right
+                res.value.get shouldBe expected
+            }
         }
     }
 
