@@ -65,10 +65,13 @@ sealed interface Expr {
         data class DoubleLitExpr(val value: Double): LitExpr
         data class StrLitExpr(val value: String): LitExpr
         data class BoolLitExpr(val value: Boolean): LitExpr
-        object SqlNullExpr
+        object SqlNullExpr: LitExpr
     }
 
-    data class ColumnExpr(val column: Column): Expr
+    sealed interface SelectableExpr {
+        data class ColumnExpr(val column: Column): SelectableExpr
+        data class WildcardExpr(val sourceAlias: String?): SelectableExpr
+    }
 
     data class NotExpr(val expr: Expr): Expr
 
@@ -78,9 +81,9 @@ sealed interface Expr {
     data class EqExpr(val left: Expr, val right: Expr): Expr
     data class NeqExpr(val left: Expr, val right: Expr): Expr
     data class GExpr(val left: Expr, val right: Expr): Expr
-    data class GOEExpr(val left: Expr, val right: Expr): Expr
+    data class GoeExpr(val left: Expr, val right: Expr): Expr
     data class LExpr(val left: Expr, val right: Expr): Expr
-    data class LOEExpr(val left: Expr, val right: Expr): Expr
+    data class LoeExpr(val left: Expr, val right: Expr): Expr
 
     data class FunExpr(val func: SqlId, val args: List<Expr>): Expr
 

@@ -1,5 +1,7 @@
 package io.github.paulpaulych.sql
 
+import io.github.paulpaulych.TestUtils.runParserSuccessCases
+import io.github.paulpaulych.sql.Expr.LitExpr.*
 import io.kotest.core.spec.style.DescribeSpec
 
 class ExprParserTest: DescribeSpec({
@@ -52,23 +54,7 @@ class ExprParserTest: DescribeSpec({
         "some_schema.some_fun()"
     )
 
-    //language=sql
-    val literals = listOf(
-        "true",
-        "false",
-
-        "123",
-        "-175",
-
-        "45.56",
-        "-1.4553e3",
-
-
-        "'able ble'",
-        "''",
-
-        "null",
-
+    val queryExpr = listOf(
         "(select * from table_a)"
     )
 
@@ -77,4 +63,19 @@ class ExprParserTest: DescribeSpec({
         "",
     )
 
+    it("sql literal parser") {
+        val parser = ExprParser(wildcardAllowed = false).litExpr()
+
+        runParserSuccessCases(parser,
+            "null" to SqlNullExpr,
+            "'abla'" to StrLitExpr("abla"),
+            "'abla abla'" to StrLitExpr("abla abla"),
+            "-1" to IntLitExpr(-1),
+            "12.5" to DoubleLitExpr(12.5),
+            "-1.25e2" to DoubleLitExpr(-1.25e2),
+            "+1.25E2" to DoubleLitExpr(+1.25E2),
+            "false" to BoolLitExpr(false),
+            "true" to BoolLitExpr(true)
+        )
+    }
 })
