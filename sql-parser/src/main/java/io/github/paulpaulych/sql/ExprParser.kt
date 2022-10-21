@@ -40,22 +40,25 @@ class ExprParser(
 ) {
 
     private val exprParsers: List<Parser<Expr>> = listOf(
-        binOperator(OR, sOrS("or"), arg = { expr(skipParsers = 1)}).attempt(),
-        binOperator(AND, sOrS("and"), arg = { expr(skipParsers = 2)}).attempt(),
-        unaryOperator(NOT, sOrS("not"), arg = { expr(skipParsers = 2)}),
-        binOperator(EQ, s("="), arg = { expr(skipParsers = 4)}).attempt(),
-        binOperator(NEQ, s("!="), arg = { expr(skipParsers = 5)}).attempt(),
-        binOperator(LTE, s("<="), arg = { expr(skipParsers = 6)}).attempt(),
-        binOperator(LT, s("<"), arg = { expr(skipParsers = 7)}).attempt(),
-        binOperator(GTE, s(">="), arg = { expr(skipParsers = 8)}).attempt(),
-        binOperator(GT, s(">"), arg = { expr(skipParsers = 9)}).attempt(),
-        binOperator(PLUS, s("+"), arg = { expr(skipParsers = 10)}).attempt(),
-        binOperator(MINUS, s("-"), arg = { expr(skipParsers = 11)}).attempt(),
-        binOperator(MULT, s("*"), arg = { expr(skipParsers = 12)}).attempt(),
-        binOperator(DIV, s("/"), arg = { expr(skipParsers = 13)}).attempt(),
-        binOperator(MOD, s("%"), arg = { expr(skipParsers = 14)}).attempt(),
-        unaryOperator(UN_MINUS, s("-"), arg = { expr(skipParsers = 16)}),
-        unaryOperator(UN_PLUS, s("+"), arg = { expr(skipParsers = 16)}),
+        binOperator(OR, sOrS("or"), arg1 = { expr(skipParsers = 1) }, arg2 = { expr(skipParsers = 0) }).attempt(),
+        binOperator(AND, sOrS("and"), arg1 = { expr(skipParsers = 2) }, arg2 = { expr(skipParsers = 1) }).attempt(),
+        unaryOperator(NOT, sOrS("not"), arg = { expr(skipParsers = 2) }),
+        binOperator(EQ, s("="), arg1 = { expr(skipParsers = 4) }, arg2 = { expr(skipParsers = 3) }).attempt(),
+        binOperator(NEQ, s("!="), arg1 = { expr(skipParsers = 5) }, arg2 = { expr(skipParsers = 4) }).attempt(),
+
+        binOperator(LTE, s("<="), arg1 = { expr(skipParsers = 6) }, arg2 = { expr(skipParsers = 5) }).attempt(),
+        binOperator(LT, s("<"), arg1 = { expr(skipParsers = 7) }, arg2 = { expr(skipParsers = 6) }).attempt(),
+        binOperator(GTE, s(">="), arg1 = { expr(skipParsers = 8) }, arg2 = { expr(skipParsers = 7) }).attempt(),
+        binOperator(GT, s(">"), arg1 = { expr(skipParsers = 9) }, arg2 = { expr(skipParsers = 8) }).attempt(),
+        binOperator(PLUS, s("+"), arg1 = { expr(skipParsers = 10) }, arg2 = { expr(skipParsers = 9) }).attempt(),
+
+        binOperator(MINUS, s("-"), arg1 = { expr(skipParsers = 11) }, arg2 = { expr(skipParsers = 10) }).attempt(),
+        binOperator(MULT, s("*"), arg1 = { expr(skipParsers = 12) }, arg2 = { expr(skipParsers = 11) }).attempt(),
+        binOperator(DIV, s("/"), arg1 = { expr(skipParsers = 13) }, arg2 = { expr(skipParsers = 11) }).attempt(),
+        binOperator(MOD, s("%"), arg1 = { expr(skipParsers = 14) }, arg2 = { expr(skipParsers = 11) }).attempt(),
+        unaryOperator(UN_MINUS, s("-"), arg = { expr(skipParsers = 16) }),
+
+        unaryOperator(UN_PLUS, s("+"), arg = { expr(skipParsers = 16) }),
         { expr(skipParsers = 0) }.inParentheses(),
         literal().attempt(),
         functionCall(arg = { expr(skipParsers = 0) }).attempt(),
@@ -73,9 +76,10 @@ class ExprParser(
     private fun binOperator(
         op2Type: Op2Type,
         typeParser: Parser<String>,
-        arg: () -> Parser<Expr>
+        arg1: () -> Parser<Expr>,
+        arg2: () -> Parser<Expr>
     ): Parser<Expr> {
-        return (ws skipL arg skipR ws)
+        return (ws skipL arg1 skipR ws)
             .flatMap { leftSuccess ->
                 typeParser
                     .map { Pair(leftSuccess, op2Type) }
@@ -84,7 +88,7 @@ class ExprParser(
             .flatMap { (lhs, op) ->
                 when(op) {
                    null -> succeed(lhs)
-                   else -> (ws skipL arg)
+                   else -> (ws skipL arg2)
                        .map { rhs -> Op2Expr(op, lhs, rhs) }
                 }
             }

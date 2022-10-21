@@ -158,10 +158,33 @@ class ExprParserTest: DescribeSpec({
                 Op1Expr(UN_MINUS, IntExpr(1)),
                 IntExpr(2)
             ),
+            "true and false and true" to Op2Expr(AND,
+                BoolExpr(true),
+                Op2Expr(AND, BoolExpr(false), BoolExpr(true))
+            ),
+            "1 - 2 + 3" to Op2Expr(PLUS,
+                Op2Expr(MINUS, IntExpr(1), IntExpr(2)),
+                IntExpr(3),
+            ),
+            "1 + 2 - 3" to Op2Expr(PLUS,
+                IntExpr(1),
+                Op2Expr(MINUS, IntExpr(2), IntExpr(3)),
+            ),
+            "1 * 2 * 3" to Op2Expr(MULT,
+                IntExpr(1),
+                Op2Expr(MULT, IntExpr(2), IntExpr(3)),
+            ),
+            "1 * 2 / 3 * 4" to Op2Expr(MULT,
+                IntExpr(1),
+                Op2Expr(DIV,
+                    IntExpr(2),
+                    Op2Expr(MULT, IntExpr(3), IntExpr(4))
+                ),
+            ),
             "not not 2" to Op1Expr(NOT, Op1Expr(NOT, IntExpr(2))),
             Pair(
                 """
-                    true and (not false) or not 
+                    true and (not false) or not
                     + table1.a + b * (c - d) <= (a + (-table2.b)) % c
                 """.trimIndent(),
                 Op2Expr(OR,
