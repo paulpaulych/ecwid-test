@@ -24,11 +24,11 @@ import io.github.paulpaulych.sql.CommonSqlParsers.int
 import io.github.paulpaulych.sql.CommonSqlParsers.latinWord
 import io.github.paulpaulych.sql.CommonSqlParsers.quoted
 import io.github.paulpaulych.sql.CommonSqlParsers.s
-import io.github.paulpaulych.sql.CommonSqlParsers.sOrS
+import io.github.paulpaulych.sql.CommonSqlParsers.sqlNull
+import io.github.paulpaulych.sql.CommonSqlParsers.wOrW
 import io.github.paulpaulych.sql.CommonSqlParsers.wildcard
 import io.github.paulpaulych.sql.CommonSqlParsers.ws
 import io.github.paulpaulych.sql.Expr.*
-import io.github.paulpaulych.sql.Expr.LitExpr.*
 import io.github.paulpaulych.sql.Expr.SelectableExpr.ColumnExpr
 import io.github.paulpaulych.sql.Expr.SelectableExpr.WildcardExpr
 import io.github.paulpaulych.sql.Op1Type.*
@@ -40,9 +40,9 @@ class ExprParser(
 ) {
 
     private val exprParsers: List<Parser<Expr>> = listOf(
-        binOperator(OR, sOrS("or"), arg1 = { expr(skipParsers = 1) }, arg2 = { expr(skipParsers = 0) }).attempt(),
-        binOperator(AND, sOrS("and"), arg1 = { expr(skipParsers = 2) }, arg2 = { expr(skipParsers = 1) }).attempt(),
-        unaryOperator(NOT, sOrS("not"), arg = { expr(skipParsers = 2) }),
+        binOperator(OR, wOrW("or"), arg1 = { expr(skipParsers = 1) }, arg2 = { expr(skipParsers = 0) }).attempt(),
+        binOperator(AND, wOrW("and"), arg1 = { expr(skipParsers = 2) }, arg2 = { expr(skipParsers = 1) }).attempt(),
+        unaryOperator(NOT, wOrW("not"), arg = { expr(skipParsers = 2) }),
         binOperator(EQ, s("="), arg1 = { expr(skipParsers = 4) }, arg2 = { expr(skipParsers = 3) }).attempt(),
         binOperator(NEQ, s("!="), arg1 = { expr(skipParsers = 5) }, arg2 = { expr(skipParsers = 4) }).attempt(),
 
@@ -60,7 +60,11 @@ class ExprParser(
 
         unaryOperator(UN_PLUS, s("+"), arg = { expr(skipParsers = 16) }),
         { expr(skipParsers = 0) }.inParentheses(),
-        literal().attempt(),
+        sqlNull.attempt(),
+        double,
+        int,
+        quoted,
+        boolean.attempt(),
         functionCall(arg = { expr(skipParsers = 0) }).attempt(),
         columnOrWildcard()
     )
@@ -102,13 +106,6 @@ class ExprParser(
         return ((typeParser skipL ws).attempt() skipL arg)
             .map { operand -> Op1Expr(type, operand) }
     }
-
-    private fun literal(): Parser<Expr> =
-        s(NULL.get).map { SqlNullExpr } or
-                double.map(::DoubleExpr).defer() or
-                int.map(::IntExpr).defer() or
-                quoted.map(::StrExpr).defer() or
-                boolean.map(::BoolExpr).defer()
 
     private fun columnOrWildcard(): Parser<Expr> = scoped(
         scope = SELECTABLE_EXPR.get,

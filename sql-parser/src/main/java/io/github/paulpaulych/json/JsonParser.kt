@@ -11,7 +11,6 @@ import io.github.paulpaulych.parser.TextParsersDsl.sepBy
 import io.github.paulpaulych.parser.TextParsersDsl.skipL
 import io.github.paulpaulych.parser.TextParsersDsl.skipR
 import io.github.paulpaulych.parser.TextParsersDsl.surround
-import io.github.paulpaulych.parser.TextParsersDsl.thru
 import io.github.paulpaulych.parser.TextParsers.string
 import io.github.paulpaulych.parser.TextParsersDsl.defer
 
@@ -35,7 +34,7 @@ object JsonParser {
     private val quoted: Parser<String> = scoped(
         scope = "string",
         msg = "expected quoted string",
-        parser = s("\"") skipL thru("\"").map { it.dropLast(1) }
+        parser = surround(s("\""), s("\""), r(Regex("[^\"]*")))
     )
 
     private val NULL: Parser<JSON> = scoped(

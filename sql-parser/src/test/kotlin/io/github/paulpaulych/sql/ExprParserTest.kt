@@ -20,6 +20,7 @@ class ExprParserTest: DescribeSpec({
         expectSuccess(parser,
             "null" to SqlNullExpr,
             "'abla'" to StrExpr("abla"),
+            "''" to StrExpr(""),
             "'abla abla'" to StrExpr("abla abla"),
             "1" to IntExpr(1),
             "12.5" to DoubleExpr(12.5),
@@ -211,7 +212,83 @@ class ExprParserTest: DescribeSpec({
                         )
                     )
                 )
+            ),
+            Pair(
+                """
+                    true and (not false) or not
+                    + table1.a + b * (c - d) <= (a + (-table2.b)) % c
+                """.trimIndent(),
+                Op2Expr(OR,
+                    Op2Expr(AND, BoolExpr(true), Op1Expr(NOT, BoolExpr(false))),
+                    Op1Expr(NOT,
+                        Op2Expr(LTE,
+                            Op2Expr(PLUS,
+                                Op1Expr(UN_PLUS, ColumnExpr(Column("a", "table1"))),
+                                Op2Expr(MULT,
+                                    ColumnExpr(Column("b", null)),
+                                    Op2Expr(MINUS,
+                                        ColumnExpr(Column("c", null)),
+                                        ColumnExpr(Column("d", null))
+                                    )
+                                )
+                            ),
+                            Op2Expr(MOD,
+                                Op2Expr(PLUS,
+                                    ColumnExpr(Column("a", null)),
+                                    Op1Expr(UN_MINUS, ColumnExpr(Column("b", "table2")))
+                                ),
+                                ColumnExpr(Column("c", null))
+                            ),
+                        )
+                    )
+                )
             )
+        )
+    }
+
+    it("spaces between expressions") {
+        expectSuccess(ExprParser(wildcardAllowed = false).expr(),
+            "(true) and (false)" to Op2Expr(AND, BoolExpr(true), BoolExpr(false)),
+            "(true)and(false)" to Op2Expr(AND, BoolExpr(true), BoolExpr(false)),
+            "(true)and (false)" to Op2Expr(AND, BoolExpr(true), BoolExpr(false)),
+            "(true) and (false)" to Op2Expr(AND, BoolExpr(true), BoolExpr(false)),
+            "true and false" to Op2Expr(AND, BoolExpr(true), BoolExpr(false)),
+            "trueandfalse" to ColumnExpr(Column("trueandfalse", null)),
+            "(1) - (2)" to Op2Expr(MINUS, IntExpr(1), IntExpr(2)),
+            "(1)-(2)" to Op2Expr(MINUS, IntExpr(1), IntExpr(2)),
+            "(1) -(2)" to Op2Expr(MINUS, IntExpr(1), IntExpr(2)),
+            "(1)- (2)" to Op2Expr(MINUS, IntExpr(1), IntExpr(2)),
+            "1-2" to Op2Expr(MINUS, IntExpr(1), IntExpr(2)),
+            "1 - 2" to Op2Expr(MINUS, IntExpr(1), IntExpr(2)),
+            "1 -2" to Op2Expr(MINUS, IntExpr(1), IntExpr(2)),
+            "1- 2" to Op2Expr(MINUS, IntExpr(1), IntExpr(2)),
+            "not1" to ColumnExpr(Column("not1", null)),
+            "not 1" to Op1Expr(NOT, IntExpr(1)),
+            "not(1)" to Op1Expr(NOT, IntExpr(1)),
+            "not (1)" to Op1Expr(NOT, IntExpr(1)),
+            "-1" to Op1Expr(UN_MINUS, IntExpr(1)),
+            "- 1" to Op1Expr(UN_MINUS, IntExpr(1)),
+            "-(1)" to Op1Expr(UN_MINUS, IntExpr(1)),
+            "- (1)" to Op1Expr(UN_MINUS, IntExpr(1)),
+            "'' and false" to Op2Expr(AND, StrExpr(""), BoolExpr(false)),
+            "truecolumn" to ColumnExpr(Column("truecolumn", null)),
+            "not_table.true_column" to ColumnExpr(Column("true_column", "not_table")),
+            "not_table.true_column-5" to Op2Expr(MINUS, ColumnExpr(Column("true_column", "not_table")), IntExpr(5)),
+        )
+
+        expectFailure(ExprParser(wildcardAllowed = false).expr(),
+            "-1and false" to {
+                cause?.cause?.error shouldBe ParseError("word separator", "word separator expected")
+                cause?.cause?.state?.offset shouldBe 2
+            },
+            "-1.0and false" to {
+                cause?.cause?.error shouldBe ParseError("word separator", "word separator expected")
+                cause?.cause?.state?.offset shouldBe 4
+            },
+            "''and false" to {
+                cause?.cause?.error shouldBe ParseError("word separator", "word separator expected")
+                cause?.cause?.state?.offset shouldBe 2
+            },
         )
     }
 })

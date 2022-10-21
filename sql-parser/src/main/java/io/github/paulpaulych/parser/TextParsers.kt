@@ -9,8 +9,8 @@ import io.github.paulpaulych.parser.TextParsersDsl.or
 
 object TextParsers {
 
-    fun string(s: String): Parser<String> {
-        return Parser { state: State ->
+    fun string(s: String): Parser<String> =
+        Parser { state: State ->
             when (val idx = firstNonMatchingIndex(s, state.input, state.offset)) {
                 null -> Right(Success(s, s.length))
                 else -> {
@@ -24,7 +24,6 @@ object TextParsers {
                 }
             }
         }
-    }
 
     fun regex(regex: Regex): Parser<String> =
         Parser { location ->
@@ -42,6 +41,7 @@ object TextParsers {
             }
         }
 
+    // TODO: make regular expression
     fun notEof(): Parser<Unit> =
         Parser { state ->
             if (state.offset < state.input.length) {
@@ -59,8 +59,8 @@ object TextParsers {
     fun <A> succeed(a: A): Parser<A> =
         Parser { Right(Success(a, 0)) }
 
-    fun <A> oneOf(parsers: Sequence<Parser<out A>>): Parser<A> {
-        return Parser { state ->
+    fun <A> oneOf(parsers: Sequence<Parser<out A>>): Parser<A> =
+        Parser { state ->
             var curErr: StackTrace? = null
             for (next in parsers) {
                 if (curErr != null && curErr.isCommitted) {
@@ -78,7 +78,6 @@ object TextParsers {
             }
             curErr?.let(::Left) ?: throw IllegalStateException("empty parser sequence given")
         }
-    }
 
     fun <A, B> flatMap(pa: Parser<A>, f: (A) -> Parser<B>): Parser<B> =
         Parser { location ->
@@ -114,6 +113,14 @@ object TextParsers {
 
     fun <A> Parser<A>.attempt(): Parser<A> =
         Parser { state -> this.parse(state).mapLeft { it.uncommit() }}
+
+    fun <A> Parser<A>.peekOnly(): Parser<A> =
+        Parser { state ->
+            when(val res = this.parse(state)) {
+                is Left -> res
+                is Right -> Right(res.value.copy(consumed = 0))
+            }
+        }
 
     fun <A> run(p: Parser<A>, input: String): Either<StackTrace, Success<A>> {
         return p.parse(State(input = input, offset = 0))
