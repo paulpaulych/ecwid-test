@@ -1,7 +1,6 @@
 package io.github.paulpaulych.sql
 
 import io.github.paulpaulych.parser.Parser
-import io.github.paulpaulych.parser.TextParsers.or
 import io.github.paulpaulych.parser.TextParsers.regex
 import io.github.paulpaulych.parser.TextParsers.scoped
 import io.github.paulpaulych.parser.TextParsers.string
@@ -77,5 +76,5 @@ object CommonSqlParsers {
         { this }.inParentheses()
 
     fun <A> (() -> Parser<A>).inParentheses(): Parser<A> =
-        surround(s("("), s(")"), this)
+        surround(s("("), s(")"), ws skipL this skipR ws)
 }

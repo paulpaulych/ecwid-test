@@ -41,8 +41,11 @@ object TestUtils {
             )
         ) { source, matcher ->
             val res = TextParsers.run(parser, source)
-            res as Left
-            matcher(res.value)
+            withClue(res) {
+                res shouldBe instanceOf<Left<StackTrace>>()
+                res as Left
+                matcher(res.value)
+            }
         }
     }
 

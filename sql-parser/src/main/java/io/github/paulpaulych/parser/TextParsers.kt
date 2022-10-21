@@ -9,8 +9,8 @@ import io.github.paulpaulych.parser.TextParsersDsl.or
 
 object TextParsers {
 
-    fun string(s: String): Parser<String> =
-        Parser { state: State ->
+    fun string(s: String): Parser<String> {
+        return Parser { state: State ->
             when (val idx = firstNonMatchingIndex(s, state.input, state.offset)) {
                 null -> Right(Success(s, s.length))
                 else -> {
@@ -24,6 +24,7 @@ object TextParsers {
                 }
             }
         }
+    }
 
     fun regex(regex: Regex): Parser<String> =
         Parser { location ->
@@ -41,26 +42,41 @@ object TextParsers {
             }
         }
 
+    fun notEof(): Parser<Unit> =
+        Parser { state ->
+            if (state.offset < state.input.length) {
+                Right(Success(Unit, 0))
+            } else {
+                Left(StackTrace(
+                    state = state,
+                    error = ParseError("not end of input", "end of input found"),
+                    isCommitted = false,
+                    cause = null
+                ))
+            }
+        }
+
     fun <A> succeed(a: A): Parser<A> =
         Parser { Right(Success(a, 0)) }
 
-    fun <A> or(pa: Parser<out A>, pb: () -> Parser<out A>): Parser<A> {
+    fun <A> oneOf(parsers: Sequence<Parser<out A>>): Parser<A> {
         return Parser { state ->
-            val firstRes = pa.parse(state)
-            firstRes.flatMapLeft { firstErr ->
-                if (firstErr.isCommitted) {
-                    firstRes
-                } else {
-                    val secondRes = pb().parse(state)
-                    secondRes.mapLeft { secondErr ->
-                        if (!secondErr.isCommitted) {
-                            firstErr.appendFailedScopes(secondErr.error.failedScopes())
-                        } else {
-                            secondErr
-                        }
-                    }
+            var curErr: StackTrace? = null
+            for (next in parsers) {
+                if (curErr != null && curErr.isCommitted) {
+                    return@Parser Left(curErr)
                 }
+                val nextRes = next.parse(state)
+                if (nextRes !is Left) {
+                    return@Parser nextRes
+                }
+                val nexErr = nextRes.value
+                curErr = nexErr.takeIf { it.isCommitted }
+                        ?: curErr
+                        ?.appendFailedScopes(nextRes.value.error.failedScopes())
+                        ?: nextRes.value
             }
+            curErr?.let(::Left) ?: throw IllegalStateException("empty parser sequence given")
         }
     }
 
@@ -70,7 +86,8 @@ object TextParsers {
             aResult.flatMap { aSuccess ->
                 val pb = f(aSuccess.get)
                 val newLocation = location.advanceBy(aSuccess.consumed)
-                pb.parse(newLocation)
+                val bResult = pb.parse(newLocation)
+                bResult
                     .mapLeft { bErr ->
                         bErr.appendCommitted(isCommitted = aSuccess.consumed != 0)
                     }

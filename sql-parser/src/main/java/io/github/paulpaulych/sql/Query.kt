@@ -67,31 +67,35 @@ enum class Op1Type {
 }
 
 enum class Op2Type {
-    OR, AND, EQ, NEQ, GT, GTE, LT, LTE
+    OR, AND,
+
+    EQ, NEQ, GT, GTE, LT, LTE,
+
+    PLUS, MINUS, MOD, DIV, MULTIPLY, EXP
 }
 
 sealed interface Expr {
 
-    sealed interface LitExpr: Expr {
-        data class IntLitExpr(val value: Int): LitExpr
-        data class DoubleLitExpr(val value: Double): LitExpr
-        data class StrLitExpr(val value: String): LitExpr
-        data class BoolLitExpr(val value: Boolean): LitExpr
+    sealed interface ValueExpr: Expr
+
+    sealed interface LitExpr: ValueExpr {
+        data class IntExpr(val value: Int): LitExpr
+        data class DoubleExpr(val value: Double): LitExpr
+        data class StrExpr(val value: String): LitExpr
+        data class BoolExpr(val value: Boolean): LitExpr
         object SqlNullExpr: LitExpr
     }
 
-    sealed interface SelectableExpr: Expr {
+    sealed interface SelectableExpr: ValueExpr {
         data class ColumnExpr(val column: Column): SelectableExpr
         data class WildcardExpr(val wildcard: Wildcard?): SelectableExpr
     }
 
+    data class FunExpr(val function: SqlId, val args: List<Expr>): ValueExpr
+    data class QueryExpr(val query: Query): ValueExpr
+
     data class Op1Expr(val op: Op1Type, val arg: Expr): Expr
-
     data class Op2Expr(val op: Op2Type, val left: Expr, val right: Expr): Expr
-
-    data class FunExpr(val function: SqlId, val args: List<Expr>): Expr
-
-    data class QueryExpr(val query: Query): Expr
 }
 
 enum class Direction { ASC, DESC }

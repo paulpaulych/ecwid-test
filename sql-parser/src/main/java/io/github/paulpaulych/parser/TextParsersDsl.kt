@@ -1,7 +1,7 @@
 package io.github.paulpaulych.parser
 
 import io.github.paulpaulych.parser.TextParsers.flatMap
-import io.github.paulpaulych.parser.TextParsers.or
+import io.github.paulpaulych.parser.TextParsers.oneOf
 import io.github.paulpaulych.parser.TextParsers.regex
 import io.github.paulpaulych.parser.TextParsers.succeed
 import java.util.regex.Pattern
@@ -19,6 +19,14 @@ object TextParsersDsl {
         return flatMap(this, f)
     }
 
+    fun <A> or(pa: Parser<out A>, pb: () -> Parser<out A>): Parser<A> {
+        return oneOf(sequence {
+            yield(pa)
+            yield(pb())
+        })
+    }
+
+    @JvmName("orExt")
     infix fun <A> Parser<out A>.or(pb: () -> Parser<out A>): Parser<A> {
         return or(this, pb)
     }
@@ -46,13 +54,13 @@ object TextParsersDsl {
     operator fun <A, B> Parser<A>.plus(pb: () -> Parser<B>): Parser<Pair<A, B>> = map2(this, pb) { a, b -> Pair(a, b) }
 
     infix fun <A, B> Parser<A>.skipR(p: Parser<B>): Parser<A> =
-        (this and { p }).map { it.first }
+        (this + { p }).map { it.first }
 
     infix fun <A, B> Parser<A>.skipL(p: Parser<B>): Parser<B> =
-        (this and { p }).map { it.second }
+        (this + { p }).map { it.second }
 
     infix fun <A, B> Parser<A>.skipL(p: () -> Parser<B>): Parser<B> =
-        (this and p).map { it.second }
+        (this + p).map { it.second }
 
     fun <A> surround(
         start: Parser<*>,

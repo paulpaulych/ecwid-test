@@ -2,7 +2,6 @@ package io.github.paulpaulych.json
 
 import io.github.paulpaulych.json.JSON.*
 import io.github.paulpaulych.parser.Parser
-import io.github.paulpaulych.parser.TextParsers.or
 import io.github.paulpaulych.parser.TextParsers.regex
 import io.github.paulpaulych.parser.TextParsers.scoped
 import io.github.paulpaulych.parser.TextParsersDsl.map

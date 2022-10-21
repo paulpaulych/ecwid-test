@@ -2,10 +2,14 @@ package io.github.paulpaulych.sql
 
 import io.github.paulpaulych.parser.Parser
 import io.github.paulpaulych.parser.TextParsers.attempt
+import io.github.paulpaulych.parser.TextParsers.notEof
 import io.github.paulpaulych.parser.TextParsers.optional
+import io.github.paulpaulych.parser.TextParsers.oneOf
 import io.github.paulpaulych.parser.TextParsers.scoped
+import io.github.paulpaulych.parser.TextParsers.succeed
 import io.github.paulpaulych.parser.TextParsersDsl.and
 import io.github.paulpaulych.parser.TextParsersDsl.defer
+import io.github.paulpaulych.parser.TextParsersDsl.flatMap
 import io.github.paulpaulych.parser.TextParsersDsl.map
 import io.github.paulpaulych.parser.TextParsersDsl.or
 import io.github.paulpaulych.parser.TextParsersDsl.plus
@@ -35,23 +39,74 @@ class ExprParser(
     val wildcardAllowed: Boolean
 ) {
 
-    fun expr(): Parser<Expr> = scoped(
-        scope = "expression",
-        parser = litExpr() or
-                ::selectableExpr or
-                ::op1Expr
+    private val exprParsers: List<Parser<Expr>> = listOf(
+        op2Parser(OR, sOrS("or"), { expr(1)}).attempt() ,
+        op2Parser(AND, sOrS("and"), { expr(2)}).attempt(),
+        op1Parser(NOT, sOrS("not"), { expr(2)}),
+        op2Parser(EQ, s("="), { expr(4)}).attempt(),
+        op2Parser(NEQ, s("!="), { expr(5)}).attempt(),
+        op2Parser(LTE, s("<="), { expr(6)}).attempt(),
+        op2Parser(LT, s("<"), { expr(7)}).attempt(),
+        op2Parser(GTE, s(">="), { expr(8)}).attempt(),
+        op2Parser(GT, s(">"), { expr(9)}).attempt(),
+        op2Parser(PLUS, s("+"), { expr(10)}).attempt(),
+        op2Parser(MINUS, s("-"), { expr(11)}).attempt(),
+        op2Parser(MULTIPLY, s("*"), { expr(12)}).attempt(),
+        op2Parser(DIV, s("/"), { expr(13)}).attempt(),
+        op1Parser(UN_MINUS, s("-"), { expr(14)}),
+        op1Parser(UN_PLUS, s("+"), { expr(15)}),
+
+        { expr(skipParsers = 0) }.inParentheses(),
+        litExpr().attempt(),
+        funExpr({ expr(skipParsers = 0) }).attempt(),
+        selectableExpr()
     )
 
-    fun litExpr(): Parser<LitExpr> = scoped(
-        scope = LITERAL.get,
-        parser = s(NULL.get).map { SqlNullExpr } or
-                double.map(::DoubleLitExpr).defer() or
-                int.map(::IntLitExpr).defer() or
-                quoted.map(::StrLitExpr).defer() or
-                boolean.map(::BoolLitExpr).defer()
-    )
+    fun expr(): Parser<Expr> =
+        scoped("expression", "expression expected", expr(skipParsers = 0))
 
-    fun selectableExpr(): Parser<SelectableExpr> = scoped(
+    private fun expr(skipParsers: Int): Parser<Expr> {
+        val parsers = exprParsers.asSequence().drop(skipParsers)
+        return notEof() skipL oneOf(parsers)
+    }
+
+    private fun op2Parser(
+        op2Type: Op2Type,
+        typeParser: Parser<String>,
+        subExprParser: () -> Parser<Expr>
+    ): Parser<Expr> {
+        return (ws skipL subExprParser skipR ws)
+            .flatMap { leftSuccess ->
+                typeParser
+                    .map { Pair(leftSuccess, op2Type) }
+                    .or { succeed(Pair(leftSuccess, null as Op2Type?)) }
+            }
+            .flatMap { (lhs, op) ->
+                when(op) {
+                   null -> succeed(lhs)
+                   else -> (ws skipL subExprParser)
+                       .map { rhs -> Op2Expr(op, lhs, rhs) }
+                }
+            }
+    }
+
+    private fun op1Parser(
+        type: Op1Type,
+        typeParser: Parser<String>,
+        subExprParser: () -> Parser<Expr>
+    ): Parser<Expr> {
+        return ((typeParser skipL ws).attempt() skipL subExprParser)
+            .map { operand -> Op1Expr(type, operand) }
+    }
+
+    private fun litExpr(): Parser<Expr> =
+        s(NULL.get).map { SqlNullExpr } or
+                double.map(::DoubleExpr).defer() or
+                int.map(::IntExpr).defer() or
+                quoted.map(::StrExpr).defer() or
+                boolean.map(::BoolExpr).defer()
+
+    private fun selectableExpr(): Parser<Expr> = scoped(
         scope = SELECTABLE_EXPR.get,
         msg = "expected ${COLUMN.get}${" or ${WILDCARD.get}".takeIf { wildcardAllowed } ?: ""}",
         parser = when(wildcardAllowed) {
@@ -60,66 +115,16 @@ class ExprParser(
         }
     )
 
-
-    fun op1Expr(): Parser<Op1Expr> {
-        val operator = Op1Type.values().map { op ->
-            when(op) {
-                UN_MINUS -> s("-")
-                UN_PLUS -> s("+")
-                NOT -> sOrS("not")
-            }.map { op }
-        }.reduce { a, b -> a or { b } }
-
-        val inParentheses = (ws skipL ::expr skipR ws).inParentheses()
-        val withoutParentheses = ws skipL ::expr
-        return (operator + (inParentheses or withoutParentheses.defer()))
-            .map { (op, operand) -> Op1Expr(op, operand) }
-    }
-
-    fun op2Expr(): Parser<Op2Expr> {
-        val operator = op2OpsParsers()
-            .reduce { a, b -> a or { b } }
-        return ((ws skipL ::expr) + (ws skipL operator skipR ws) + ::expr)
-            .map { (a, arg2) ->
-                val (arg1, op) = a
-                Op2Expr(op, arg1, arg2)
-            }
-    }
-
-    private fun op2OpsParsers(): List<Parser<Op2Type>> {
-        // TODO: extract to constant
-        // to check more concrete templates firstly
-        val fixedOrder = listOf(OR, AND, EQ, NEQ, GTE, GT, LTE, LT)
-
-        Op2Type.values().forEach { op ->
-            check(op in fixedOrder) {
-                "order or operator $op not defined"
-            }
-        }
-
-        return fixedOrder
-            .map { op ->
-                when(op) {
-                    OR -> sOrS("or")
-                    AND -> sOrS("and")
-                    EQ -> s("=")
-                    NEQ -> s("!=")
-                    GT -> s(">")
-                    GTE -> s(">=")
-                    LTE -> s("<=")
-                    LT -> s("<")
-                }.map { op }
-            }
-    }
-
-    fun funExpr(): Parser<FunExpr> =
-        (latinWord skipR s(".")).optional()
-            .and(latinWord)
-            .and(((ws skipL ::expr skipR ws) sepBy s(",")).inParentheses())
-            .map { (a, args) ->
-                val (schema, name) = a
+    private fun funExpr(subExprParser: () -> Parser<Expr>): Parser<Expr> {
+        val arg = ws skipL subExprParser skipR ws
+        val args = arg sepBy s(",")
+        return ((latinWord skipR s(".")).optional() + latinWord)
+            .and(args.inParentheses())
+            .map { (func, args) ->
+                val (schema, name) = func
                 FunExpr(SqlId(schema, name), args)
             }
+    }
 
-    fun queryExpr(): Parser<QueryExpr> = TODO()
+    private fun queryExpr(): Parser<QueryExpr> = TODO()
 }
