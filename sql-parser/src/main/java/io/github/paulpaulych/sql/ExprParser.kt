@@ -40,26 +40,26 @@ class ExprParser(
 ) {
 
     private val exprParsers: List<Parser<Expr>> = listOf(
-        op2Parser(OR, sOrS("or"), { expr(1)}).attempt() ,
-        op2Parser(AND, sOrS("and"), { expr(2)}).attempt(),
-        op1Parser(NOT, sOrS("not"), { expr(2)}),
-        op2Parser(EQ, s("="), { expr(4)}).attempt(),
-        op2Parser(NEQ, s("!="), { expr(5)}).attempt(),
-        op2Parser(LTE, s("<="), { expr(6)}).attempt(),
-        op2Parser(LT, s("<"), { expr(7)}).attempt(),
-        op2Parser(GTE, s(">="), { expr(8)}).attempt(),
-        op2Parser(GT, s(">"), { expr(9)}).attempt(),
-        op2Parser(PLUS, s("+"), { expr(10)}).attempt(),
-        op2Parser(MINUS, s("-"), { expr(11)}).attempt(),
-        op2Parser(MULTIPLY, s("*"), { expr(12)}).attempt(),
-        op2Parser(DIV, s("/"), { expr(13)}).attempt(),
-        op1Parser(UN_MINUS, s("-"), { expr(14)}),
-        op1Parser(UN_PLUS, s("+"), { expr(15)}),
-
+        binOperator(OR, sOrS("or"), arg = { expr(skipParsers = 1)}).attempt(),
+        binOperator(AND, sOrS("and"), arg = { expr(skipParsers = 2)}).attempt(),
+        unaryOperator(NOT, sOrS("not"), arg = { expr(skipParsers = 2)}),
+        binOperator(EQ, s("="), arg = { expr(skipParsers = 4)}).attempt(),
+        binOperator(NEQ, s("!="), arg = { expr(skipParsers = 5)}).attempt(),
+        binOperator(LTE, s("<="), arg = { expr(skipParsers = 6)}).attempt(),
+        binOperator(LT, s("<"), arg = { expr(skipParsers = 7)}).attempt(),
+        binOperator(GTE, s(">="), arg = { expr(skipParsers = 8)}).attempt(),
+        binOperator(GT, s(">"), arg = { expr(skipParsers = 9)}).attempt(),
+        binOperator(PLUS, s("+"), arg = { expr(skipParsers = 10)}).attempt(),
+        binOperator(MINUS, s("-"), arg = { expr(skipParsers = 11)}).attempt(),
+        binOperator(MULT, s("*"), arg = { expr(skipParsers = 12)}).attempt(),
+        binOperator(DIV, s("/"), arg = { expr(skipParsers = 13)}).attempt(),
+        binOperator(MOD, s("%"), arg = { expr(skipParsers = 14)}).attempt(),
+        unaryOperator(UN_MINUS, s("-"), arg = { expr(skipParsers = 16)}),
+        unaryOperator(UN_PLUS, s("+"), arg = { expr(skipParsers = 16)}),
         { expr(skipParsers = 0) }.inParentheses(),
-        litExpr().attempt(),
-        funExpr({ expr(skipParsers = 0) }).attempt(),
-        selectableExpr()
+        literal().attempt(),
+        functionCall(arg = { expr(skipParsers = 0) }).attempt(),
+        columnOrWildcard()
     )
 
     fun expr(): Parser<Expr> =
@@ -70,12 +70,12 @@ class ExprParser(
         return notEof() skipL oneOf(parsers)
     }
 
-    private fun op2Parser(
+    private fun binOperator(
         op2Type: Op2Type,
         typeParser: Parser<String>,
-        subExprParser: () -> Parser<Expr>
+        arg: () -> Parser<Expr>
     ): Parser<Expr> {
-        return (ws skipL subExprParser skipR ws)
+        return (ws skipL arg skipR ws)
             .flatMap { leftSuccess ->
                 typeParser
                     .map { Pair(leftSuccess, op2Type) }
@@ -84,29 +84,29 @@ class ExprParser(
             .flatMap { (lhs, op) ->
                 when(op) {
                    null -> succeed(lhs)
-                   else -> (ws skipL subExprParser)
+                   else -> (ws skipL arg)
                        .map { rhs -> Op2Expr(op, lhs, rhs) }
                 }
             }
     }
 
-    private fun op1Parser(
+    private fun unaryOperator(
         type: Op1Type,
         typeParser: Parser<String>,
-        subExprParser: () -> Parser<Expr>
+        arg: () -> Parser<Expr>
     ): Parser<Expr> {
-        return ((typeParser skipL ws).attempt() skipL subExprParser)
+        return ((typeParser skipL ws).attempt() skipL arg)
             .map { operand -> Op1Expr(type, operand) }
     }
 
-    private fun litExpr(): Parser<Expr> =
+    private fun literal(): Parser<Expr> =
         s(NULL.get).map { SqlNullExpr } or
                 double.map(::DoubleExpr).defer() or
                 int.map(::IntExpr).defer() or
                 quoted.map(::StrExpr).defer() or
                 boolean.map(::BoolExpr).defer()
 
-    private fun selectableExpr(): Parser<Expr> = scoped(
+    private fun columnOrWildcard(): Parser<Expr> = scoped(
         scope = SELECTABLE_EXPR.get,
         msg = "expected ${COLUMN.get}${" or ${WILDCARD.get}".takeIf { wildcardAllowed } ?: ""}",
         parser = when(wildcardAllowed) {
@@ -115,9 +115,8 @@ class ExprParser(
         }
     )
 
-    private fun funExpr(subExprParser: () -> Parser<Expr>): Parser<Expr> {
-        val arg = ws skipL subExprParser skipR ws
-        val args = arg sepBy s(",")
+    private fun functionCall(arg: () -> Parser<Expr>): Parser<Expr> {
+        val args = (ws skipL arg skipR ws) sepBy s(",")
         return ((latinWord skipR s(".")).optional() + latinWord)
             .and(args.inParentheses())
             .map { (func, args) ->

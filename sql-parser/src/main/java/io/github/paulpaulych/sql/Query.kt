@@ -71,7 +71,7 @@ enum class Op2Type {
 
     EQ, NEQ, GT, GTE, LT, LTE,
 
-    PLUS, MINUS, MOD, DIV, MULTIPLY, EXP
+    PLUS, MINUS, MOD, DIV, MULT
 }
 
 sealed interface Expr {

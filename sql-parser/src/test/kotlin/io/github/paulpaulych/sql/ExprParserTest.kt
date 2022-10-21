@@ -159,6 +159,36 @@ class ExprParserTest: DescribeSpec({
                 IntExpr(2)
             ),
             "not not 2" to Op1Expr(NOT, Op1Expr(NOT, IntExpr(2))),
+            Pair(
+                """
+                    true and (not false) or not 
+                    + table1.a + b * (c - d) <= (a + (-table2.b)) % c
+                """.trimIndent(),
+                Op2Expr(OR,
+                    Op2Expr(AND, BoolExpr(true), Op1Expr(NOT, BoolExpr(false))),
+                    Op1Expr(NOT,
+                        Op2Expr(LTE,
+                            Op2Expr(PLUS,
+                                Op1Expr(UN_PLUS, ColumnExpr(Column("a", "table1"))),
+                                Op2Expr(MULT,
+                                    ColumnExpr(Column("b", null)),
+                                    Op2Expr(MINUS,
+                                        ColumnExpr(Column("c", null)),
+                                        ColumnExpr(Column("d", null))
+                                    )
+                                )
+                            ),
+                            Op2Expr(MOD,
+                                Op2Expr(PLUS,
+                                    ColumnExpr(Column("a", null)),
+                                    Op1Expr(UN_MINUS, ColumnExpr(Column("b", "table2")))
+                                ),
+                                ColumnExpr(Column("c", null))
+                            ),
+                        )
+                    )
+                )
+            )
         )
     }
 })
