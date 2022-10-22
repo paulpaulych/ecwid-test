@@ -1,6 +1,6 @@
 package io.github.paulpaulych.sql
 
-enum class Keywords(
+enum class Keyword(
     val value: String
 ) {
 
@@ -11,6 +11,8 @@ enum class Keywords(
     JOIN("join"),
     INNER("inner"),
     CROSS("cross"),
+    FULL("full"),
+    OUTER("outer"),
     LEFT("left"),
     RIGHT("right"),
     ON("on"),

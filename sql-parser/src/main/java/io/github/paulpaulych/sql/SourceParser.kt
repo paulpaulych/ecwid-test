@@ -12,13 +12,12 @@ import io.github.paulpaulych.parser.TextParsersDsl.many
 import io.github.paulpaulych.parser.TextParsersDsl.or
 import io.github.paulpaulych.parser.TextParsersDsl.plus
 import io.github.paulpaulych.parser.TextParsersDsl.skipL
-import io.github.paulpaulych.parser.TextParsersDsl.skipR
 import io.github.paulpaulych.sql.CommonSqlParsers.sqlId
 import io.github.paulpaulych.sql.CommonSqlParsers.anyWord
 import io.github.paulpaulych.sql.CommonSqlParsers.comma
 import io.github.paulpaulych.sql.CommonSqlParsers.excludingKeywords
 import io.github.paulpaulych.sql.CommonSqlParsers.inParentheses
-import io.github.paulpaulych.sql.CommonSqlParsers.wOrW
+import io.github.paulpaulych.sql.CommonSqlParsers.parser
 import io.github.paulpaulych.sql.CommonSqlParsers.ws
 import io.github.paulpaulych.sql.CommonSqlParsers.ws1
 import io.github.paulpaulych.sql.JoinType.*
@@ -45,15 +44,18 @@ object SourceParser {
     private val sourceWithoutAlias: Parser<SourceWithoutAlias> = sqlId.map { SqlIdWithoutAlias(it) }
     private val sqlIdSource: Parser<Source> = sourceWithoutAlias.withAlias()
 
-    private val crossJoinKeyword = comma or { wOrW("cross").attempt() skipR ws1 skipR wOrW("join") }
-    private val leftJoinKeyword = wOrW("left").attempt() skipR ws1 skipR wOrW("join")
-    private val rightJoinKeyword = wOrW("right").attempt() skipR ws1 skipR wOrW("join")
-    private val innerJoinKeyword = wOrW("inner").optional() skipR ws1 skipR wOrW("join")
+    private val crossJoinKeyword = comma or {
+        (Keyword.CROSS.parser() or { Keyword.FULL.parser() skipL ws skipL Keyword.OUTER.parser() })
+            .skipL(ws skipL Keyword.JOIN.parser())
+    }
+    private val leftJoinKeyword = Keyword.LEFT.parser() skipL ws skipL Keyword.OUTER.parser().optional() skipL ws skipL Keyword.JOIN.parser()
+    private val rightJoinKeyword = Keyword.RIGHT.parser() skipL ws skipL Keyword.OUTER.parser().optional() skipL ws skipL Keyword.JOIN.parser()
+    private val innerJoinKeyword = (Keyword.INNER.parser() skipL ws).optional() skipL Keyword.JOIN.parser()
 
     private val noCondition: Parser<Expr?> = succeed(null)
     private val joinCondition: Parser<Expr?> = scoped(
         scope = "join condition",
-        parser = (wOrW("on") skipL ws1 skipL expr).map { it }
+        parser = (Keyword.ON.parser() skipL ws1 skipL expr).map { it }
     )
 
     private val joinOperator: Parser<JoinType> = oneOf(sequenceOf(

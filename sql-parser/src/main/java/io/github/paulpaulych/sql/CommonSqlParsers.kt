@@ -104,9 +104,11 @@ object CommonSqlParsers {
         Left(StackTrace(state, ParseError(scope, msg)))
     }
 
+    fun Keyword.parser(): Parser<String> = wOrW(this.value)
+
     fun Parser<String>.excludingKeywords(): Parser<String> =
         this.flatMap { value ->
-            if (value in Keywords.ALL) {
+            if (value in Keyword.ALL) {
                 failed("not keyword", "$value not allowed here")
             } else {
                 succeed(value)
