@@ -3,7 +3,6 @@ package io.github.paulpaulych.sql
 import io.github.paulpaulych.parser.Parser
 import io.github.paulpaulych.parser.TextParsers.attempt
 import io.github.paulpaulych.parser.TextParsers.notEof
-import io.github.paulpaulych.parser.TextParsers.optional
 import io.github.paulpaulych.parser.TextParsers.oneOf
 import io.github.paulpaulych.parser.TextParsers.scoped
 import io.github.paulpaulych.parser.TextParsers.succeed
@@ -12,7 +11,6 @@ import io.github.paulpaulych.parser.TextParsersDsl.defer
 import io.github.paulpaulych.parser.TextParsersDsl.flatMap
 import io.github.paulpaulych.parser.TextParsersDsl.map
 import io.github.paulpaulych.parser.TextParsersDsl.or
-import io.github.paulpaulych.parser.TextParsersDsl.plus
 import io.github.paulpaulych.parser.TextParsersDsl.sepBy
 import io.github.paulpaulych.parser.TextParsersDsl.skipL
 import io.github.paulpaulych.parser.TextParsersDsl.skipR
@@ -21,9 +19,9 @@ import io.github.paulpaulych.sql.CommonSqlParsers.column
 import io.github.paulpaulych.sql.CommonSqlParsers.double
 import io.github.paulpaulych.sql.CommonSqlParsers.inParentheses
 import io.github.paulpaulych.sql.CommonSqlParsers.int
-import io.github.paulpaulych.sql.CommonSqlParsers.latinWord
 import io.github.paulpaulych.sql.CommonSqlParsers.quoted
 import io.github.paulpaulych.sql.CommonSqlParsers.s
+import io.github.paulpaulych.sql.CommonSqlParsers.sqlId
 import io.github.paulpaulych.sql.CommonSqlParsers.sqlNull
 import io.github.paulpaulych.sql.CommonSqlParsers.wOrW
 import io.github.paulpaulych.sql.CommonSqlParsers.wildcard
@@ -118,12 +116,9 @@ class ExprParser(
 
     private fun functionCall(arg: () -> Parser<Expr>): Parser<Expr> {
         val args = (ws skipL arg skipR ws) sepBy s(",")
-        return ((latinWord skipR s(".")).optional() + latinWord)
+        return sqlId
             .and(args.inParentheses())
-            .map { (func, args) ->
-                val (schema, name) = func
-                FunExpr(SqlId(schema, name), args)
-            }
+            .map { (sqlId, args) -> FunExpr(sqlId, args) }
     }
 
     private fun queryExpr(): Parser<QueryExpr> = TODO()

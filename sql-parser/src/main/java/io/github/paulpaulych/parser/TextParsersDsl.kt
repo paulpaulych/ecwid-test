@@ -77,7 +77,7 @@ object TextParsersDsl {
     fun thru(s: String): Parser<String> =
         regex(Regex(".*?${Pattern.quote(s)}"))
 
-    infix fun <A> Parser<A>.sepBy(sep: Parser<String>): Parser<List<A>> {
+    infix fun <A> Parser<A>.sepBy(sep: Parser<*>): Parser<List<A>> {
         val notEmptyList = map2(this, { (sep skipL this).many() }) { a, la ->
             listOf(a) + la
         }

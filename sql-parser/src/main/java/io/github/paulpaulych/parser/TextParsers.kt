@@ -114,6 +114,9 @@ object TextParsers {
     fun <A> Parser<A>.attempt(): Parser<A> =
         Parser { state -> this.parse(state).mapLeft { it.uncommit() }}
 
+    /**
+     * does not affect on state: no symbols will be consumed
+     */
     fun <A> Parser<A>.peekOnly(): Parser<A> =
         Parser { state ->
             when(val res = this.parse(state)) {

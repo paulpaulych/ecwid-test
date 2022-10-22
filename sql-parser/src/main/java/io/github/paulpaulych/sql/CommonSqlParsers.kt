@@ -1,14 +1,21 @@
 package io.github.paulpaulych.sql
 
+import io.github.paulpaulych.common.Either.Left
+import io.github.paulpaulych.parser.ErrorItem.ParseError
 import io.github.paulpaulych.parser.Parser
+import io.github.paulpaulych.parser.StackTrace
+import io.github.paulpaulych.parser.TextParsers.optional
 import io.github.paulpaulych.parser.TextParsers.peekOnly
 import io.github.paulpaulych.parser.TextParsers.regex
 import io.github.paulpaulych.parser.TextParsers.scoped
 import io.github.paulpaulych.parser.TextParsers.string
+import io.github.paulpaulych.parser.TextParsers.succeed
 import io.github.paulpaulych.parser.TextParsersDsl.defer
+import io.github.paulpaulych.parser.TextParsersDsl.flatMap
 import io.github.paulpaulych.parser.TextParsersDsl.many
 import io.github.paulpaulych.parser.TextParsersDsl.map
 import io.github.paulpaulych.parser.TextParsersDsl.or
+import io.github.paulpaulych.parser.TextParsersDsl.plus
 import io.github.paulpaulych.parser.TextParsersDsl.sepBy1
 import io.github.paulpaulych.parser.TextParsersDsl.skipL
 import io.github.paulpaulych.parser.TextParsersDsl.skipR
@@ -19,18 +26,22 @@ import io.github.paulpaulych.sql.Expr.LitExpr.*
 object CommonSqlParsers {
 
     val ws: Parser<String> = r(Regex("[\u0020\u0009\u000A\u000D]*"))
-    val latinWord: Parser<String> = r(Regex("[a-zA-Z_][a-zA-Z0-9_]*"))
-
+    val ws1: Parser<String> = scoped("space", "space expected", r(Regex("[\u0020\u0009\u000A\u000D]+")))
+    private val latinWord: Parser<String> = r(Regex("[a-zA-Z_][a-zA-Z0-9_]*"))
     private val floatParser: Parser<String> = r(Regex("\\d+\\.\\d+([eE][-+]?\\d+)?"))
     private val stringContent: Parser<String> = r(Regex("[^']*"))
-    private val endOfWord: Parser<String> = r(Regex("([^a-zA-Z0-9_]|\$)"))
-
-    private val wordSep: Parser<String> = scoped("word separator", "word separator expected", endOfWord.peekOnly())
+    private val wordSep: Parser<String> = scoped(
+        scope = "word separator",
+        msg = "word separator expected",
+        parser = r(Regex("([^a-zA-Z0-9_]|\$)")).peekOnly()
+    )
 
     fun s(s: String): Parser<String> = string(s)
 
-    private fun w(s: String): Parser<String> = s(s) skipR wordSep
     fun wOrW(s: String): Parser<String> = (s(s.lowercase()) or s(s.uppercase()).defer()) skipR wordSep
+    private fun w(s: String): Parser<String> = s(s) skipR wordSep
+
+    val anyWord: Parser<String> = latinWord skipR wordSep
 
     private fun r(regex: Regex): Parser<String> = regex(regex)
 
@@ -62,6 +73,7 @@ object CommonSqlParsers {
         parser = floatParser.map { DoubleExpr(it.toDouble()) as Expr } skipR wordSep
     )
 
+    val comma: Parser<String> = s(",")
     val int: Parser<Expr> = scoped(
         scope = "int",
         parser = r(Regex("\\d+")).map { IntExpr(it.toInt()) as Expr } skipR wordSep
@@ -75,11 +87,31 @@ object CommonSqlParsers {
         )
     )
 
+    val sqlId: Parser<SqlId> = scoped(
+        scope = "table or function",
+        msg = "table or function expected",
+        parser = ((latinWord skipR s(".")).optional() + latinWord)
+            .map { (schema, name) -> SqlId(schema, name) }
+    )
+
     val quoted: Parser<Expr> = scoped(
         scope = "string literal",
         msg = "expected quoted string",
         parser = surround(s("'"), s("'"), stringContent).map { StrExpr(it) as Expr } skipR wordSep
     )
+
+    private fun <A> failed(scope: String, msg: String) = Parser<A> { state ->
+        Left(StackTrace(state, ParseError(scope, msg)))
+    }
+
+    fun Parser<String>.excludingKeywords(): Parser<String> =
+        this.flatMap { value ->
+            if (value in Keywords.ALL) {
+                failed("not keyword", "$value not allowed here")
+            } else {
+                succeed(value)
+            }
+        }
 
     fun <A> Parser<A>.inParentheses(): Parser<A> =
         { this }.inParentheses()

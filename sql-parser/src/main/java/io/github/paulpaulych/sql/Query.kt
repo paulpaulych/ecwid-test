@@ -2,8 +2,8 @@ package io.github.paulpaulych.sql
 
 data class Query(
     private val columns: List<SelectableColumns>,
-    private val fromSources: List<Source>,
-    private val joins: List<Join>,
+    private val source: Source,
+    //TODO and as ','?
     private val whereClauses: List<Expr>,
     private val groupByColumns: List<String>,
     private val sortColumns: List<Sort>,
@@ -11,35 +11,43 @@ data class Query(
     private val offset: Int?,
 )
 
+enum class JoinType { CROSS, INNER, LEFT, RIGHT }
+
 sealed interface Source {
+
+    data class JoinSource(
+        val type: JoinType,
+        val condition: Expr?,
+        val lhs: Source,
+        val rhs: Source
+    ): Source {
+        override fun toString() = "${type.name}_JOIN(l=$lhs,r=$rhs)"
+    }
 
     data class QuerySource(
         val query: Query,
         val alias: String
-    ): Source
+    ): Source {
+        override fun toString() = "TODO: implement Query.toString()"
+    }
 
-    data class TableSource(
-        val table: SqlId,
-        val alias: String,
-    ): Source
-}
-
-sealed interface Join {
-
-    data class CrossJoin(val source: Source): Join
-
-    data class SelectiveJoin(
-        val source: Source,
-        val expr: Expr
-    ) {
-        enum class JoinType { INNER, LEFT, RIGHT }
+    data class SqlIdSource(
+        val sqlId: SqlId,
+        val alias: String?,
+    ): Source {
+        override fun toString() = alias?.let { "$sqlId $it" } ?: sqlId.toString()
     }
 }
 
+/**
+ * represents qualified SQL name \[schema.]name
+ */
 data class SqlId(
     val schema: String?,
     val name: String
-)
+) {
+    override fun toString() = schema?.let { "$it.$name" } ?: name
+}
 
 data class Column(
     val name: String,
