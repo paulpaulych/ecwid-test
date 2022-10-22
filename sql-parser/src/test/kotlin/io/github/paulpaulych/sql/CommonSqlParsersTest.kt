@@ -33,14 +33,28 @@ internal class CommonSqlParsersTest: DescribeSpec({
             "source.*" to Wildcard("source"),
             "schema.table.*" to Wildcard("schema.table"),
         )
+    }
 
-        expectFailure(CommonSqlParsers.column,
-            "" to {
-                error shouldBe ParseError("column", "invalid column syntax")
-            },
-            "123" to {
-                error shouldBe ParseError("column", "invalid column syntax")
-            },
+    it("columns by comma parser") {
+        expectSuccess(CommonSqlParsers.columnsByComma,
+            "table_a.col_a,schema_b.table_b.col_b,col_c" to listOf(
+                Column("col_a", source = SqlId(null, "table_a")),
+                Column("col_b", source = SqlId("schema_b", "table_b")),
+                Column("col_c", source = null),
+            ),
+            "table_a.col_a   \n\t,   schema_b.table_b.col_b        ,col_c" to listOf(
+                Column("col_a", source = SqlId(null, "table_a")),
+                Column("col_b", source = SqlId("schema_b", "table_b")),
+                Column("col_c", source = null),
+            ),
+        )
+
+        val err = ParseError("columns sep by comma", "columns sep by comma expected")
+        expectFailure(CommonSqlParsers.columnsByComma,
+            "" to { error shouldBe err },
+            "," to { error shouldBe err },
+            "  " to { error shouldBe err },
+            ")" to { error shouldBe err },
         )
     }
 })

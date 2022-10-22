@@ -28,6 +28,7 @@ object CommonSqlParsers {
 
     val ws: Parser<String> = r(Regex("[\u0020\u0009\u000A\u000D]*"))
     val ws1: Parser<String> = scoped("space", "space expected", r(Regex("[\u0020\u0009\u000A\u000D]+")))
+
     private val latinWord: Parser<String> = r(Regex("[a-zA-Z_][a-zA-Z0-9_]*"))
     private val floatParser: Parser<String> = r(Regex("\\d+\\.\\d+([eE][-+]?\\d+)?"))
     private val stringContent: Parser<String> = r(Regex("[^']*"))
@@ -106,7 +107,11 @@ object CommonSqlParsers {
         parser = surround(s("'"), s("'"), stringContent).map { StrExpr(it) as Expr } skipR wordSep
     )
 
-    val columnsByComma = (ws skipL ws ).sepBy1(comma)
+    val columnsByComma: Parser<List<Column>> = scoped(
+        scope = "columns sep by comma",
+        msg = "columns sep by comma expected",
+        parser = (ws skipL column skipR ws).sepBy1(comma)
+    )
 
     private fun <A> failed(scope: String, msg: String) = Parser<A> { state ->
         Left(StackTrace(state, ParseError(scope, msg)))
