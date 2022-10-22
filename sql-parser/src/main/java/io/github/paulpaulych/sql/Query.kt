@@ -13,14 +13,14 @@ data class Query(
     private val offset: Int?,
 ) {
     override fun toString() =
-        "SELECT ${columns.joinToString(", ")}" + lineSeparator() +
-        "FROM $source" + lineSeparator() +
-        (where?.let { "WHERE $it" + lineSeparator() } ?: "") +
-        (groupBy.takeIf { it.isNotEmpty() }?.let { "GROUP BY ${it.joinToString(", ")}}" + lineSeparator() } ?: "") +
-        (having?.let { "HAVING $it" + lineSeparator() } ?: "") +
-        (sorts.takeIf { it.isNotEmpty() }?.let { "ORDER BY ${it.joinToString(", ")}}" + lineSeparator() } ?: "") +
-        (limit?.let { "LIMIT $it" + lineSeparator() } ?: "") +
-        (offset?.let { "OFFSET $it" } ?: "")
+        "SELECT ${columns.joinToString(", ")}" +
+        lineSeparator() + "FROM $source" +
+        (where?.let { lineSeparator() + "WHERE $it" } ?: "") +
+        (groupBy.takeIf { it.isNotEmpty() }?.let { lineSeparator() + "GROUP BY ${it.joinToString(", ")}" } ?: "") +
+        (having?.let { lineSeparator() + "HAVING $it" } ?: "") +
+        (sorts.takeIf { it.isNotEmpty() }?.let { lineSeparator() + "ORDER BY ${it.joinToString(", ")}" } ?: "") +
+        (limit?.let { lineSeparator() + "LIMIT $it"} ?: "") +
+        (offset?.let { lineSeparator() + "OFFSET $it" } ?: "")
 }
 data class SelectedItem(
     val expr: Expr,
@@ -39,7 +39,7 @@ sealed interface Source {
         val lhs: Source,
         val rhs: Source
     ): Source {
-        override fun toString() = "${type.name}_JOIN(l=$lhs,r=$rhs)"
+        override fun toString() = "($lhs ${type.name} JOIN $rhs" + (condition?.let { " ON $it)" } ?: ")")
     }
 
     data class QuerySource(

@@ -41,14 +41,14 @@ object QueryParser {
     private val offset = Keyword.OFFSET.parser() skipL ws skipL intValue
 
     val query: Parser<Query> =
-        (ws skipL select +
-                from +
-                where.optional() +
-                groupBy.optional() +
-                having.optional() +
-                orderBy.optional() +
-                limit.optional() +
-                offset.optional())
+        (ws skipL (select skipR ws) +
+                (from skipR ws) +
+                (where.optional() skipR ws) +
+                (groupBy.optional() skipR ws) +
+                (having.optional() skipR ws) +
+                (orderBy.optional() skipR ws) +
+                (limit.optional() skipR ws) +
+                (offset.optional()))
             .map { (p1, offset) ->
                 val (p2, limit) = p1
                 val (p3, orderBy) = p2
