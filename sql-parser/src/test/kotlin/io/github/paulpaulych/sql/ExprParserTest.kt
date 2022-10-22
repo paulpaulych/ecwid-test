@@ -33,13 +33,13 @@ class ExprParserTest: DescribeSpec({
 
     it("selectable expr") {
         expectSuccess(ExprParser(wildcardAllowed = false).expr(),
-            "table.col" to ColumnExpr(Column("col", "table")),
+            "table.col" to ColumnExpr(Column("col", SqlId(null, "table"))),
             "col" to ColumnExpr(Column("col", null)),
-            "schema.table.col" to ColumnExpr(Column("col", "schema.table")),
+            "schema.table.col" to ColumnExpr(Column("col", SqlId("schema", "table"))),
         )
 
         expectSuccess(ExprParser(wildcardAllowed = true).expr(),
-            "table.col" to ColumnExpr(Column("col", "table")),
+            "table.col" to ColumnExpr(Column("col", SqlId(null, "table"))),
             "table.*" to WildcardExpr(Wildcard("table")),
             "schema.table.*" to WildcardExpr(Wildcard("schema.table")),
         )
@@ -193,7 +193,7 @@ class ExprParserTest: DescribeSpec({
                     Op1Expr(NOT,
                         Op2Expr(LTE,
                             Op2Expr(PLUS,
-                                Op1Expr(UN_PLUS, ColumnExpr(Column("a", "table1"))),
+                                Op1Expr(UN_PLUS, ColumnExpr(Column("a", SqlId(null, "table1")))),
                                 Op2Expr(MULT,
                                     ColumnExpr(Column("b", null)),
                                     Op2Expr(MINUS,
@@ -205,7 +205,7 @@ class ExprParserTest: DescribeSpec({
                             Op2Expr(MOD,
                                 Op2Expr(PLUS,
                                     ColumnExpr(Column("a", null)),
-                                    Op1Expr(UN_MINUS, ColumnExpr(Column("b", "table2")))
+                                    Op1Expr(UN_MINUS, ColumnExpr(Column("b", SqlId(null, "table2"))))
                                 ),
                                 ColumnExpr(Column("c", null))
                             ),
@@ -223,7 +223,7 @@ class ExprParserTest: DescribeSpec({
                     Op1Expr(NOT,
                         Op2Expr(LTE,
                             Op2Expr(PLUS,
-                                Op1Expr(UN_PLUS, ColumnExpr(Column("a", "table1"))),
+                                Op1Expr(UN_PLUS, ColumnExpr(Column("a", SqlId(null, "table1")))),
                                 Op2Expr(MULT,
                                     ColumnExpr(Column("b", null)),
                                     Op2Expr(MINUS,
@@ -235,7 +235,7 @@ class ExprParserTest: DescribeSpec({
                             Op2Expr(MOD,
                                 Op2Expr(PLUS,
                                     ColumnExpr(Column("a", null)),
-                                    Op1Expr(UN_MINUS, ColumnExpr(Column("b", "table2")))
+                                    Op1Expr(UN_MINUS, ColumnExpr(Column("b", SqlId(null, "table2"))))
                                 ),
                                 ColumnExpr(Column("c", null))
                             ),
@@ -272,8 +272,8 @@ class ExprParserTest: DescribeSpec({
             "- (1)" to Op1Expr(UN_MINUS, IntExpr(1)),
             "'' and false" to Op2Expr(AND, StrExpr(""), BoolExpr(false)),
             "truecolumn" to ColumnExpr(Column("truecolumn", null)),
-            "not_table.true_column" to ColumnExpr(Column("true_column", "not_table")),
-            "not_table.true_column-5" to Op2Expr(MINUS, ColumnExpr(Column("true_column", "not_table")), IntExpr(5)),
+            "not_table.true_column" to ColumnExpr(Column("true_column", SqlId(null, "not_table"))),
+            "not_table.true_column-5" to Op2Expr(MINUS, ColumnExpr(Column("true_column", SqlId(null, "not_table"))), IntExpr(5)),
         )
 
         expectFailure(ExprParser(wildcardAllowed = false).expr(),

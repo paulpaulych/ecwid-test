@@ -51,7 +51,7 @@ data class SqlId(
 
 data class Column(
     val name: String,
-    val source: String?
+    val source: SqlId?,
 )
 
 data class Wildcard(

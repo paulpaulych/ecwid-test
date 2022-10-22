@@ -11,10 +11,10 @@ internal class CommonSqlParsersTest: DescribeSpec({
     it("column parser") {
         expectSuccess(CommonSqlParsers.column,
             "col10A" to Column("col10A", null),
-            "source.col" to Column(name = "col", source = "source"),
-            "schema.table.col" to Column(name = "col", source = "schema.table"),
+            "source.col" to Column(name = "col", source = SqlId(null, "source")),
+            "schema.table.col" to Column(name = "col", source = SqlId("schema", "table")),
             "some_col_name" to Column("some_col_name", null),
-            "source_alias.some_col_name" to Column("some_col_name", "source_alias"),
+            "source_alias.some_col_name" to Column("some_col_name", SqlId(null, "source_alias")),
         )
 
         expectFailure(CommonSqlParsers.column,

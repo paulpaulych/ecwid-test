@@ -10,6 +10,7 @@ import io.github.paulpaulych.parser.TextParsers.regex
 import io.github.paulpaulych.parser.TextParsers.scoped
 import io.github.paulpaulych.parser.TextParsers.string
 import io.github.paulpaulych.parser.TextParsers.succeed
+import io.github.paulpaulych.parser.TextParsersDsl.and
 import io.github.paulpaulych.parser.TextParsersDsl.defer
 import io.github.paulpaulych.parser.TextParsersDsl.flatMap
 import io.github.paulpaulych.parser.TextParsersDsl.many
@@ -47,13 +48,18 @@ object CommonSqlParsers {
 
     val column: Parser<Column> = scoped(
         scope = "column",
-        parser = (latinWord sepBy1 s("."))
-            .map { segments ->
-                Column(
-                    name = segments.last(),
-                    source = segments.dropLast(1).joinToString(".").takeIf { it.isNotEmpty() }
-                )
-            }
+        parser =
+            (latinWord skipR s(".")).optional()
+                .and((latinWord skipR s(".")).optional())
+                .and(latinWord)
+                .map { (sqlId, name) ->
+                    Column(
+                        name = name,
+                        source = sqlId.second
+                            ?.let { SqlId(sqlId.first, it) }
+                            ?: sqlId.first?.let { SqlId(null, it) },
+                    )
+                }
     )
 
     val wildcard: Parser<Wildcard> = scoped(
@@ -99,6 +105,8 @@ object CommonSqlParsers {
         msg = "expected quoted string",
         parser = surround(s("'"), s("'"), stringContent).map { StrExpr(it) as Expr } skipR wordSep
     )
+
+    val columnsByComma = (ws skipL ws ).sepBy1(comma)
 
     private fun <A> failed(scope: String, msg: String) = Parser<A> { state ->
         Left(StackTrace(state, ParseError(scope, msg)))
