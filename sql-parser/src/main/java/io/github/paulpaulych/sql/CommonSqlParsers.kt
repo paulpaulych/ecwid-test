@@ -22,6 +22,8 @@ import io.github.paulpaulych.parser.TextParsersDsl.skipL
 import io.github.paulpaulych.parser.TextParsersDsl.skipR
 import io.github.paulpaulych.parser.TextParsersDsl.surround
 import io.github.paulpaulych.sql.Expr.LitExpr.*
+import io.github.paulpaulych.sql.SortOrder.ASC
+import io.github.paulpaulych.sql.SortOrder.DESC
 
 @Suppress("RegExpSimplifiable")
 object CommonSqlParsers {
@@ -81,10 +83,13 @@ object CommonSqlParsers {
     )
 
     val comma: Parser<String> = s(",")
-    val int: Parser<Expr> = scoped(
+
+    val intValue = scoped(
         scope = "int",
-        parser = r(Regex("\\d+")).map { IntExpr(it.toInt()) as Expr } skipR wordSep
+        parser = r(Regex("\\d+")).map { it.toInt() } skipR wordSep
     )
+
+    val int: Parser<Expr> = intValue.map { IntExpr(it) }
 
     val boolean: Parser<Expr> = scoped(
         scope = "boolean",
@@ -105,6 +110,13 @@ object CommonSqlParsers {
         scope = "string literal",
         msg = "expected quoted string",
         parser = surround(s("'"), s("'"), stringContent).map { StrExpr(it) as Expr } skipR wordSep
+    )
+
+    val sortOrder: Parser<SortOrder> = scoped(
+        scope = "sort order",
+        parser = Keyword.ASC.parser().map { ASC }
+            .or { Keyword.DESC.parser().map { DESC } }
+            .or { succeed(ASC) }
     )
 
     val columnsByComma: Parser<List<Column>> = scoped(

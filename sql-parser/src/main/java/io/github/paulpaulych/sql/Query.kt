@@ -1,14 +1,18 @@
 package io.github.paulpaulych.sql
 
 data class Query(
-    private val columns: List<SelectableColumns>,
+    private val columns: List<SelectedItem>,
     private val source: Source,
-    //TODO and as ','?
-    private val whereClauses: List<Expr>,
-    private val groupByColumns: List<String>,
-    private val sortColumns: List<Sort>,
+    private val where: Expr?,
+    private val groupBy: List<Column>,
+    private val having: Expr?,
+    private val sorts: List<Sort>,
     private val limit: Int?,
     private val offset: Int?,
+)
+data class SelectedItem(
+    val expr: Expr,
+    val alias: String?
 )
 
 enum class JoinType { CROSS, INNER, LEFT, RIGHT }
@@ -56,19 +60,7 @@ data class Column(
 
 data class Wildcard(
     val source: String?,
-): SelectableColumns
-
-sealed interface SelectableColumns {
-
-    data class ColumnsSet(
-        val wildcard: Wildcard
-    ): SelectableColumns
-
-    data class ExprColumn(
-        val expr: Expr,
-        val alias: String,
-    ): SelectableColumns
-}
+)
 
 enum class Op1Type {
     UN_MINUS, UN_PLUS, NOT
@@ -106,9 +98,9 @@ sealed interface Expr {
     data class Op2Expr(val op: Op2Type, val left: Expr, val right: Expr): Expr
 }
 
-enum class Direction { ASC, DESC }
+enum class SortOrder { ASC, DESC }
 
 data class Sort(
-    val column: Column,
-    val direction: Direction
+    val expr: Expr,
+    val direction: SortOrder
 )
