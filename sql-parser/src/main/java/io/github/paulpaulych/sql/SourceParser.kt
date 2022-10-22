@@ -1,7 +1,6 @@
 package io.github.paulpaulych.sql
 
 import io.github.paulpaulych.parser.Parser
-import io.github.paulpaulych.parser.TextParsers.attempt
 import io.github.paulpaulych.parser.TextParsers.optional
 import io.github.paulpaulych.parser.TextParsersDsl.map
 import io.github.paulpaulych.parser.TextParsers.oneOf
@@ -27,12 +26,12 @@ import io.github.paulpaulych.sql.SourceParser.SourceWithoutAlias.*
 
 object SourceParser {
 
-    //TODO: are subqueries allowed ON ?
+    //TODO: are subqueries allowed in join condition expression ?
     private val expr: () -> Parser<Expr> = ExprParser(wildcardAllowed = false)::expr
 
     private val alias: Parser<String> = scoped(
         scope = "alias",
-        parser = anyWord.excludingKeywords()
+        parser = Keyword.AS.parser().optional() skipL ws skipL anyWord.excludingKeywords()
     )
 
     private sealed interface SourceWithoutAlias {

@@ -17,6 +17,7 @@ class SourceParserTest : DescribeSpec({
         expectSuccess(SourceParser.source,
             "table_a" to SqlIdSource(SqlId(schema = null, name = "table_a"), alias = null),
             "some_SCHEMA.table_a a" to SqlIdSource(SqlId(schema = "some_SCHEMA", name = "table_a"), alias = "a"),
+            "some_SCHEMA.table_a as a" to SqlIdSource(SqlId(schema = "some_SCHEMA", name = "table_a"), alias = "a"),
         )
     }
 
