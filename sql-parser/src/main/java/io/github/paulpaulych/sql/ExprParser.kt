@@ -37,6 +37,7 @@ class ExprParser(
     val wildcardAllowed: Boolean
 ) {
 
+    // TODO: parse operators with same precedence as list
     private val exprParsers: List<Parser<Expr>> = listOf(
         binOperator(OR, wOrW("or"), arg1 = { expr(skipParsers = 1) }, arg2 = { expr(skipParsers = 0) }).attempt(),
         binOperator(AND, wOrW("and"), arg1 = { expr(skipParsers = 2) }, arg2 = { expr(skipParsers = 1) }).attempt(),
