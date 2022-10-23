@@ -5,12 +5,12 @@ import io.github.paulpaulych.parser.TextParsers.attempt
 import io.github.paulpaulych.parser.TextParsers.notEof
 import io.github.paulpaulych.parser.TextParsers.oneOf
 import io.github.paulpaulych.parser.TextParsers.scoped
-import io.github.paulpaulych.parser.TextParsers.succeed
 import io.github.paulpaulych.parser.TextParsersDsl.and
 import io.github.paulpaulych.parser.TextParsersDsl.defer
-import io.github.paulpaulych.parser.TextParsersDsl.flatMap
+import io.github.paulpaulych.parser.TextParsersDsl.many
 import io.github.paulpaulych.parser.TextParsersDsl.map
 import io.github.paulpaulych.parser.TextParsersDsl.or
+import io.github.paulpaulych.parser.TextParsersDsl.plus
 import io.github.paulpaulych.parser.TextParsersDsl.sepBy
 import io.github.paulpaulych.parser.TextParsersDsl.skipL
 import io.github.paulpaulych.parser.TextParsersDsl.skipR
@@ -19,11 +19,11 @@ import io.github.paulpaulych.sql.CommonSqlParsers.column
 import io.github.paulpaulych.sql.CommonSqlParsers.double
 import io.github.paulpaulych.sql.CommonSqlParsers.inParentheses
 import io.github.paulpaulych.sql.CommonSqlParsers.int
+import io.github.paulpaulych.sql.CommonSqlParsers.parser
 import io.github.paulpaulych.sql.CommonSqlParsers.quoted
 import io.github.paulpaulych.sql.CommonSqlParsers.s
 import io.github.paulpaulych.sql.CommonSqlParsers.sqlId
 import io.github.paulpaulych.sql.CommonSqlParsers.sqlNull
-import io.github.paulpaulych.sql.CommonSqlParsers.wOrW
 import io.github.paulpaulych.sql.CommonSqlParsers.wildcard
 import io.github.paulpaulych.sql.CommonSqlParsers.ws
 import io.github.paulpaulych.sql.Expr.*
@@ -33,31 +33,43 @@ import io.github.paulpaulych.sql.Op1Type.*
 import io.github.paulpaulych.sql.Op2Type.*
 import io.github.paulpaulych.sql.SqlScopes.*
 
+// TODO: optimize with constants
 class ExprParser(
     val wildcardAllowed: Boolean
 ) {
 
-    // TODO: parse operators with same precedence as list
+    private val comparisonOperator: Parser<Op2Type> = oneOf(sequenceOf(
+        s("=").map { EQ },
+        s("!=").map { NEQ },
+        s("<=").attempt().map { LTE },
+        s("<").map { LT },
+        s(">=").attempt().map { GTE },
+        s(">").map { GT },
+    ))
+
+    private val plusOrMinus: Parser<Op2Type> = oneOf(sequenceOf(
+        s("+").map { PLUS },
+        s("-").map { MINUS }
+    ))
+
+    private val divModMult: Parser<Op2Type> = oneOf(sequenceOf(
+        s("/").map { DIV },
+        s("%").map { MOD },
+        s("*").map { MULT }
+    ))
+
+    private val unMinus: Parser<Op1Type> = s("-").map { UN_MINUS }
+    private val unPlus: Parser<Op1Type> = s("+").map { UN_PLUS }
+
     private val exprParsers: List<Parser<Expr>> = listOf(
-        binOperator(OR, wOrW("or"), arg1 = { expr(skipParsers = 1) }, arg2 = { expr(skipParsers = 0) }).attempt(),
-        binOperator(AND, wOrW("and"), arg1 = { expr(skipParsers = 2) }, arg2 = { expr(skipParsers = 1) }).attempt(),
-        unaryOperator(NOT, wOrW("not"), arg = { expr(skipParsers = 2) }),
-        binOperator(EQ, s("="), arg1 = { expr(skipParsers = 4) }, arg2 = { expr(skipParsers = 3) }).attempt(),
-        binOperator(NEQ, s("!="), arg1 = { expr(skipParsers = 5) }, arg2 = { expr(skipParsers = 4) }).attempt(),
-
-        binOperator(LTE, s("<="), arg1 = { expr(skipParsers = 6) }, arg2 = { expr(skipParsers = 5) }).attempt(),
-        binOperator(LT, s("<"), arg1 = { expr(skipParsers = 7) }, arg2 = { expr(skipParsers = 6) }).attempt(),
-        binOperator(GTE, s(">="), arg1 = { expr(skipParsers = 8) }, arg2 = { expr(skipParsers = 7) }).attempt(),
-        binOperator(GT, s(">"), arg1 = { expr(skipParsers = 9) }, arg2 = { expr(skipParsers = 8) }).attempt(),
-        binOperator(PLUS, s("+"), arg1 = { expr(skipParsers = 10) }, arg2 = { expr(skipParsers = 9) }).attempt(),
-
-        binOperator(MINUS, s("-"), arg1 = { expr(skipParsers = 11) }, arg2 = { expr(skipParsers = 10) }).attempt(),
-        binOperator(MULT, s("*"), arg1 = { expr(skipParsers = 12) }, arg2 = { expr(skipParsers = 11) }).attempt(),
-        binOperator(DIV, s("/"), arg1 = { expr(skipParsers = 13) }, arg2 = { expr(skipParsers = 11) }).attempt(),
-        binOperator(MOD, s("%"), arg1 = { expr(skipParsers = 14) }, arg2 = { expr(skipParsers = 11) }).attempt(),
-        unaryOperator(UN_MINUS, s("-"), arg = { expr(skipParsers = 16) }),
-
-        unaryOperator(UN_PLUS, s("+"), arg = { expr(skipParsers = 16) }),
+        samePrecedenceBinOps(Keyword.OR.parser().map { OR }, arg = { expr(skipParsers = 1) }).attempt(),
+        samePrecedenceBinOps(Keyword.AND.parser().map { AND }, arg = { expr(skipParsers = 2) }).attempt(),
+        unaryOp(Keyword.NOT.parser().map { NOT }, arg = { expr(skipParsers = 2) }),
+        samePrecedenceBinOps(comparisonOperator, arg = { expr(skipParsers = 4) }).attempt(),
+        samePrecedenceBinOps(plusOrMinus, arg = { expr(skipParsers = 5) }).attempt(),
+        samePrecedenceBinOps(divModMult, arg = { expr(skipParsers = 6) }).attempt(),
+        unaryOp(unMinus, arg = { expr(skipParsers = 8) }),
+        unaryOp(unPlus, arg = { expr(skipParsers = 8) }),
         { expr(skipParsers = 0) }.inParentheses(),
         sqlNull.attempt(),
         double,
@@ -76,34 +88,26 @@ class ExprParser(
         return notEof() skipL oneOf(parsers)
     }
 
-    private fun binOperator(
-        op2Type: Op2Type,
-        typeParser: Parser<String>,
-        arg1: () -> Parser<Expr>,
-        arg2: () -> Parser<Expr>
+    private fun samePrecedenceBinOps(
+        typeParser: Parser<Op2Type>,
+        arg: () -> Parser<Expr>,
     ): Parser<Expr> {
-        return (ws skipL arg1 skipR ws)
-            .flatMap { leftSuccess ->
-                typeParser
-                    .map { Pair(leftSuccess, op2Type) }
-                    .or { succeed(Pair(leftSuccess, null as Op2Type?)) }
-            }
-            .flatMap { (lhs, op) ->
-                when(op) {
-                   null -> succeed(lhs)
-                   else -> (ws skipL arg2)
-                       .map { rhs -> Op2Expr(op, lhs, rhs) }
+        val argParser = ws skipL arg skipR ws
+        return (argParser + (typeParser + argParser).many())
+            .map { (first, tail) ->
+                if (tail.isEmpty()) first
+                else tail.fold(first) { lhs, (op, rhs) ->
+                    Op2Expr(op, lhs, rhs)
                 }
             }
     }
 
-    private fun unaryOperator(
-        type: Op1Type,
-        typeParser: Parser<String>,
+    private fun unaryOp(
+        typeParser: Parser<Op1Type>,
         arg: () -> Parser<Expr>
     ): Parser<Expr> {
-        return ((typeParser skipL ws).attempt() skipL arg)
-            .map { operand -> Op1Expr(type, operand) }
+        return ((typeParser skipR ws).attempt() + arg)
+            .map { (type, operand) -> Op1Expr(type, operand) }
     }
 
     private fun columnOrWildcard(): Parser<Expr> = scoped(

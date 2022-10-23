@@ -125,10 +125,45 @@ class ExprParserTest: DescribeSpec({
                 Op2Expr(OR, BoolExpr(false), BoolExpr(true)),
                 BoolExpr(false)
             ),
+            "(false and true) or false" to Op2Expr(
+                OR,
+                Op2Expr(AND, BoolExpr(false), BoolExpr(true)),
+                BoolExpr(false)
+            ),
+            "not true or false" to Op2Expr(
+                OR,
+                Op1Expr(NOT, BoolExpr(true)),
+                BoolExpr(false)
+            ),
             "false and true or false" to Op2Expr(
                 OR,
                 Op2Expr(AND, BoolExpr(false), BoolExpr(true)),
                 BoolExpr(false)
+            ),
+            "(false) or true or false" to Op2Expr(
+                OR,
+                Op2Expr(OR,
+                    BoolExpr(false),
+                    BoolExpr(true)),
+                BoolExpr(false)
+            ),
+            "false or true or false" to Op2Expr(
+                OR,
+                Op2Expr(OR,
+                    BoolExpr(false),
+                    BoolExpr(true)),
+                BoolExpr(false)
+            ),
+            "false and true or true and false" to Op2Expr(
+                OR,
+                Op2Expr(AND,
+                    BoolExpr(false),
+                    BoolExpr(true)
+                ),
+                Op2Expr(AND,
+                    BoolExpr(true),
+                    BoolExpr(false)
+                ),
             ),
             "false and (true or false)" to Op2Expr(
                 AND,
@@ -159,34 +194,43 @@ class ExprParserTest: DescribeSpec({
                 Op1Expr(UN_MINUS, IntExpr(1)),
                 IntExpr(2)
             ),
+            "not 1 + 2" to Op1Expr(NOT, Op2Expr(PLUS, IntExpr(1), IntExpr(2))),
             "true and false and true" to Op2Expr(AND,
-                BoolExpr(true),
-                Op2Expr(AND, BoolExpr(false), BoolExpr(true))
+                Op2Expr(AND, BoolExpr(true), BoolExpr(false)),
+                BoolExpr(true)
             ),
             "1 - 2 + 3" to Op2Expr(PLUS,
                 Op2Expr(MINUS, IntExpr(1), IntExpr(2)),
                 IntExpr(3),
             ),
-            "1 + 2 - 3" to Op2Expr(PLUS,
-                IntExpr(1),
-                Op2Expr(MINUS, IntExpr(2), IntExpr(3)),
+            "1 + 2 - 3" to Op2Expr(MINUS,
+                Op2Expr(PLUS, IntExpr(1), IntExpr(2)),
+                IntExpr(3),
             ),
             "1 * 2 * 3" to Op2Expr(MULT,
-                IntExpr(1),
-                Op2Expr(MULT, IntExpr(2), IntExpr(3)),
+                Op2Expr(MULT, IntExpr(1), IntExpr(2)),
+                IntExpr(3),
             ),
             "1 * 2 / 3 * 4" to Op2Expr(MULT,
-                IntExpr(1),
                 Op2Expr(DIV,
-                    IntExpr(2),
-                    Op2Expr(MULT, IntExpr(3), IntExpr(4))
+                    Op2Expr(MULT, IntExpr(1), IntExpr(2)),
+                    IntExpr(3)
                 ),
+                IntExpr(4),
+            ),
+            "1 + 2 * 3" to Op2Expr(PLUS,
+                IntExpr(1),
+                Op2Expr(MULT, IntExpr(2), IntExpr(3))
+            ),
+            "1 * 2 + 3" to Op2Expr(PLUS,
+                Op2Expr(MULT, IntExpr(1), IntExpr(2)),
+                IntExpr(3)
             ),
             "not not 2" to Op1Expr(NOT, Op1Expr(NOT, IntExpr(2))),
             Pair(
                 """
                     true and (not false) or not
-                    + table1.a + b * (c - d) <= (a + (-table2.b)) % c
+                    + table1.a + b * (c - d) <= (a + b + (-table2.b)) % c
                 """.trimIndent(),
                 Op2Expr(OR,
                     Op2Expr(AND, BoolExpr(true), Op1Expr(NOT, BoolExpr(false))),
@@ -204,7 +248,10 @@ class ExprParserTest: DescribeSpec({
                             ),
                             Op2Expr(MOD,
                                 Op2Expr(PLUS,
-                                    ColumnExpr(Column("a", null)),
+                                    Op2Expr(PLUS,
+                                        ColumnExpr(Column("a", null)),
+                                        ColumnExpr(Column("b", null))
+                                    ),
                                     Op1Expr(UN_MINUS, ColumnExpr(Column("b", SqlId(null, "table2"))))
                                 ),
                                 ColumnExpr(Column("c", null))
@@ -242,6 +289,17 @@ class ExprParserTest: DescribeSpec({
                         )
                     )
                 )
+            ),
+            "x > 1" to Op2Expr(GT, ColumnExpr(Column("x", null)), IntExpr(1)),
+            "COUNT(*) > 1 AND SUM(book.cost) > 500" to Op2Expr(AND,
+                Op2Expr(GT,
+                    FunExpr(SqlId(null, "COUNT"), listOf(WildcardExpr(Wildcard(null)))),
+                    IntExpr(1)
+                ),
+                Op2Expr(GT,
+                    FunExpr(SqlId(null, "SUM"), listOf(ColumnExpr(Column("cost", SqlId(null, "book"))))),
+                    IntExpr(500)
+                ),
             )
         )
     }

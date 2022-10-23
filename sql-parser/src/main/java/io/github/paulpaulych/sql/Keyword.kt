@@ -22,6 +22,7 @@ enum class Keyword(
     OR("or"),
     NOT("not"),
 
+    NULL("null"),
     TRUE("true"),
     FALSE("false"),
 

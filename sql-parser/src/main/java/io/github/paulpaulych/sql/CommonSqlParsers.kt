@@ -25,6 +25,7 @@ import io.github.paulpaulych.sql.Expr.LitExpr.*
 import io.github.paulpaulych.sql.SortOrder.ASC
 import io.github.paulpaulych.sql.SortOrder.DESC
 
+//TODO: remove wildcard
 @Suppress("RegExpSimplifiable")
 object CommonSqlParsers {
 
@@ -42,8 +43,7 @@ object CommonSqlParsers {
 
     fun s(s: String): Parser<String> = string(s)
 
-    fun wOrW(s: String): Parser<String> = (s(s.lowercase()) or s(s.uppercase()).defer()) skipR wordSep
-    private fun w(s: String): Parser<String> = s(s) skipR wordSep
+    private fun wOrW(s: String): Parser<String> = (s(s.lowercase()) or s(s.uppercase()).defer()) skipR wordSep
 
     val anyWord: Parser<String> = latinWord skipR wordSep
 
@@ -75,11 +75,11 @@ object CommonSqlParsers {
             }
     )
 
-    val sqlNull: Parser<Expr> = w("null").map { SqlNullExpr }
+    val sqlNull: Parser<Expr> = Keyword.NULL.parser().map { SqlNullExpr }
 
     val double: Parser<Expr> = scoped(
         scope = "double",
-        parser = floatParser.map { DoubleExpr(it.toDouble()) as Expr } skipR wordSep
+        parser = (floatParser skipR wordSep).map { DoubleExpr(it.toDouble()) }
     )
 
     val comma: Parser<String> = s(",")
@@ -94,8 +94,8 @@ object CommonSqlParsers {
     val boolean: Parser<Expr> = scoped(
         scope = "boolean",
         parser = or(
-            w("true").map { BoolExpr(true) },
-            w("false").map { BoolExpr(false) }.defer()
+            Keyword.TRUE.parser().map { BoolExpr(true) },
+            Keyword.FALSE.parser().map { BoolExpr(false) }.defer()
         )
     )
 
@@ -109,7 +109,7 @@ object CommonSqlParsers {
     val quoted: Parser<Expr> = scoped(
         scope = "string literal",
         msg = "expected quoted string",
-        parser = surround(s("'"), s("'"), stringContent).map { StrExpr(it) as Expr } skipR wordSep
+        parser = surround(s("'"), s("'"), stringContent).skipR(wordSep).map (::StrExpr)
     )
 
     val sortOrder: Parser<SortOrder> = scoped(
@@ -125,16 +125,20 @@ object CommonSqlParsers {
         parser = (ws skipL column skipR ws).sepBy1(comma)
     )
 
-    private fun <A> failed(scope: String, msg: String) = Parser<A> { state ->
-        Left(StackTrace(state, ParseError(scope, msg)))
-    }
 
-    fun Keyword.parser(): Parser<String> = wOrW(this.value)
+    fun Keyword.parser(): Parser<String> {
+        val scope = "keyword ${this.value.uppercase()}"
+        return scoped(
+            scope = scope,
+            msg = "$scope expected",
+            parser = wOrW(this.value)
+        )
+    }
 
     fun Parser<String>.excludingKeywords(): Parser<String> =
         this.flatMap { value ->
             if (value in Keyword.ALL) {
-                failed("not keyword", "$value not allowed here")
+                Parser { state -> Left(StackTrace(state, ParseError("not keyword", "$value not allowed here"))) }
             } else {
                 succeed(value)
             }
