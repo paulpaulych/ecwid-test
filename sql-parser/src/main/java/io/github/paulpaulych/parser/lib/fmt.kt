@@ -1,10 +1,7 @@
-package io.github.paulpaulych.parser.fmt
+package io.github.paulpaulych.parser.lib
 
-import io.github.paulpaulych.parser.lib.ErrorItem
 import io.github.paulpaulych.parser.lib.ErrorItem.ParseError
 import io.github.paulpaulych.parser.lib.ErrorItem.ScopesTried
-import io.github.paulpaulych.parser.lib.InputLine
-import io.github.paulpaulych.parser.lib.StackTrace
 import java.lang.System.lineSeparator
 
 internal fun fmt(stack: StackTrace): String {

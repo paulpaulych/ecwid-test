@@ -2,7 +2,6 @@ package io.github.paulpaulych.parser.json
 
 import io.github.paulpaulych.TestUtils.ok
 import io.github.paulpaulych.TestUtils.runParserTest
-import io.github.paulpaulych.parser.fmt.fmt
 import io.github.paulpaulych.parser.json.JSON.*
 import io.github.paulpaulych.parser.lib.ErrorItem.ParseError
 import io.github.paulpaulych.parser.lib.ErrorItem.ScopesTried
@@ -11,6 +10,7 @@ import io.github.paulpaulych.parser.lib.ParseResult.Success
 import io.github.paulpaulych.parser.lib.StackTrace
 import io.github.paulpaulych.parser.lib.State
 import io.github.paulpaulych.parser.lib.TextParsers
+import io.github.paulpaulych.parser.lib.fmt
 import io.kotest.core.spec.style.DescribeSpec
 import io.kotest.data.forAll
 import io.kotest.data.headers

@@ -5,8 +5,6 @@ import io.github.paulpaulych.parser.sql.Expr.*
 import io.github.paulpaulych.parser.sql.Source.*
 import java.lang.System.lineSeparator
 
-private operator fun String.plus(indent: Indent) = this + indent.value
-
 fun Query.fmt(
     indent: Indent
 ): String {

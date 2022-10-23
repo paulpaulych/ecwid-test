@@ -1,6 +1,5 @@
 package io.github.paulpaulych.parser.lib
 
-import io.github.paulpaulych.parser.fmt.fmt
 import io.github.paulpaulych.parser.lib.ErrorItem.ParseError
 import io.kotest.core.spec.style.DescribeSpec
 import io.kotest.data.forAll

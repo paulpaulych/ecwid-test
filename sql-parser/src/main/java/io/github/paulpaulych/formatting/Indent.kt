@@ -17,3 +17,5 @@ data class Indent(
 
     override fun toString() = value
 }
+
+private operator fun String.plus(indent: Indent) = this + indent.value
