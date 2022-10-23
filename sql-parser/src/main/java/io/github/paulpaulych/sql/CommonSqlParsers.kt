@@ -30,9 +30,9 @@ object CommonSqlParsers {
     val ws: Parser<String> = r(Regex("[\u0020\u0009\u000A\u000D]*"))
     val ws1: Parser<String> = scoped("space", "space expected", r(Regex("[\u0020\u0009\u000A\u000D]+")))
 
-    private val latinWord: Parser<String> = r(Regex("[a-zA-Z_][a-zA-Z0-9_]*"))
     private val floatParser: Parser<String> = r(Regex("\\d+\\.\\d+([eE][-+]?\\d+)?"))
     private val stringContent: Parser<String> = r(Regex("[^']*"))
+
     private val wordSep: Parser<String> = scoped(
         scope = "word separator",
         msg = "word separator expected",
@@ -45,15 +45,16 @@ object CommonSqlParsers {
 
     private val star: Parser<String> = s("*") skipR wordSep
 
-    val anyWord: Parser<String> = latinWord skipR wordSep
+    private val wordWithoutSep: Parser<String> = r(Regex("[a-zA-Z_][a-zA-Z0-9_]*")).excludingKeywords()
+    val anyWord: Parser<String> = wordWithoutSep skipR wordSep
 
     private fun r(regex: Regex): Parser<String> = regex(regex)
 
     val column: Parser<Column> = scoped(
         scope = "column",
         parser =
-            (latinWord skipR s(".")).optional()
-                .and((latinWord skipR s(".")).optional())
+            (wordWithoutSep skipR s(".")).optional()
+                .and((wordWithoutSep skipR s(".")).optional())
                 .and((anyWord or { star }))
                 .map { (sqlId, name) ->
                     Column(
@@ -92,7 +93,7 @@ object CommonSqlParsers {
     val sqlId: Parser<SqlId> = scoped(
         scope = "table or function",
         msg = "table or function expected",
-        parser = ((latinWord skipR s(".")).optional() + latinWord)
+        parser = ((wordWithoutSep skipR s(".")).optional() + wordWithoutSep)
             .map { (schema, name) -> SqlId(schema, name) }
     )
 
@@ -114,7 +115,6 @@ object CommonSqlParsers {
         msg = "columns sep by comma expected",
         parser = (ws skipL column skipR ws).sepBy1(comma)
     )
-
 
     fun Keyword.parser(): Parser<String> {
         val scope = "keyword ${this.value.uppercase()}"

@@ -7,14 +7,14 @@ import io.github.paulpaulych.sql.Expr.Op2Expr
 import io.github.paulpaulych.sql.JoinType.*
 import io.github.paulpaulych.sql.Op2Type.EQ
 import io.github.paulpaulych.sql.Op2Type.LT
-import io.github.paulpaulych.sql.Source.JoinSource
-import io.github.paulpaulych.sql.Source.SqlIdSource
+import io.github.paulpaulych.sql.Source.*
+import io.github.paulpaulych.sql.SourceParser.source
 import io.kotest.core.spec.style.DescribeSpec
 
 class SourceParserTest : DescribeSpec({
 
     it("sqlId source parser") {
-        expectSuccess(SourceParser.source,
+        expectSuccess(source,
             "table_a" to SqlIdSource(SqlId(schema = null, name = "table_a"), alias = null),
             "some_SCHEMA.table_a a" to SqlIdSource(SqlId(schema = "some_SCHEMA", name = "table_a"), alias = "a"),
             "some_SCHEMA.table_a as a" to SqlIdSource(SqlId(schema = "some_SCHEMA", name = "table_a"), alias = "a"),
@@ -22,7 +22,7 @@ class SourceParserTest : DescribeSpec({
     }
 
     it("cross join source parser") {
-        expectSuccess(SourceParser.source,
+        expectSuccess(source,
             "table_a,table_b,table_c" to JoinSource(
                 type = CROSS, condition = null,
                 lhs = JoinSource(
@@ -94,7 +94,7 @@ class SourceParserTest : DescribeSpec({
     }
 
     it("selective joins parsers") {
-        expectSuccess(SourceParser.source,
+        expectSuccess(source,
             "table_a inner join table_b on x < 1" to JoinSource(
                 type = INNER,
                 condition = Op2Expr(LT, ColumnExpr(Column("x", null)), IntExpr(1)),
@@ -135,7 +135,7 @@ class SourceParserTest : DescribeSpec({
     }
 
     it("source precedence test") {
-        expectSuccess(SourceParser.source,
+        expectSuccess(source,
             """
                 a a1, (a a2 cross join a a3)
                     join (a a4 left join a a5 on false right OUTER JOIN a a6 on 'a'=1) on (true),
@@ -177,6 +177,42 @@ class SourceParserTest : DescribeSpec({
         )
 
     }
+
+    it("subQuery source parser") {
+        expectSuccess(source,
+            "(select * from a) a1" to SubQuerySource(
+                query = Query(
+                    columns = listOf(
+                        SelectedItem(ColumnExpr(Column("*", null)), alias = null)
+                    ),
+                    source = SqlIdSource(SqlId(null, "a"), null),
+                    where = null,
+                    groupBy = listOf(),
+                    having = null,
+                    sorts = listOf(),
+                    limit = null,
+                    offset = null
+                ),
+                alias = "a1"
+            ),
+            "(select * from a) as a1" to SubQuerySource(
+                query = Query(
+                    columns = listOf(
+                        SelectedItem(ColumnExpr(Column("*", null)), alias = null)
+                    ),
+                    source = SqlIdSource(SqlId(null, "a"), null),
+                    where = null,
+                    groupBy = listOf(),
+                    having = null,
+                    sorts = listOf(),
+                    limit = null,
+                    offset = null
+                ),
+                alias = "a1"
+            ),
+        )
+    }
+
 
     //TODO: move to QueryParserTest
     //language=sql

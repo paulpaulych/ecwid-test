@@ -42,7 +42,7 @@ sealed interface Source {
         override fun toString() = "($lhs ${type.name} JOIN $rhs" + (condition?.let { " ON $it)" } ?: ")")
     }
 
-    data class QuerySource(
+    data class SubQuerySource(
         val query: Query,
         val alias: String
     ): Source {

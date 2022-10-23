@@ -1,6 +1,7 @@
 package io.github.paulpaulych.sql
 
 import io.github.paulpaulych.parser.Parser
+import io.github.paulpaulych.parser.TextParsers.attempt
 import io.github.paulpaulych.parser.TextParsers.optional
 import io.github.paulpaulych.parser.TextParsersDsl.map
 import io.github.paulpaulych.parser.TextParsers.oneOf
@@ -14,32 +15,22 @@ import io.github.paulpaulych.parser.TextParsersDsl.skipL
 import io.github.paulpaulych.sql.CommonSqlParsers.sqlId
 import io.github.paulpaulych.sql.CommonSqlParsers.anyWord
 import io.github.paulpaulych.sql.CommonSqlParsers.comma
-import io.github.paulpaulych.sql.CommonSqlParsers.excludingKeywords
 import io.github.paulpaulych.sql.CommonSqlParsers.inParentheses
 import io.github.paulpaulych.sql.CommonSqlParsers.parser
 import io.github.paulpaulych.sql.CommonSqlParsers.ws
 import io.github.paulpaulych.sql.CommonSqlParsers.ws1
 import io.github.paulpaulych.sql.ExprParser.expr
 import io.github.paulpaulych.sql.JoinType.*
+import io.github.paulpaulych.sql.QueryParser.query
 import io.github.paulpaulych.sql.Source.*
-import io.github.paulpaulych.sql.SourceParser.SourceWithoutAlias.*
 
 
 object SourceParser {
 
     private val alias: Parser<String> = scoped(
         scope = "alias",
-        parser = Keyword.AS.parser().optional() skipL ws skipL anyWord.excludingKeywords()
+        parser = Keyword.AS.parser().optional() skipL ws skipL anyWord
     )
-
-    private sealed interface SourceWithoutAlias {
-        data class JoinWithoutAlias(val get: JoinSource): SourceWithoutAlias
-        data class SqlIdWithoutAlias(val get: SqlId): SourceWithoutAlias
-        data class QueryWithoutAlias(val get: Query): SourceWithoutAlias
-    }
-
-    private val sourceWithoutAlias: Parser<SourceWithoutAlias> = sqlId.map { SqlIdWithoutAlias(it) }
-    private val sqlIdSource: Parser<Source> = sourceWithoutAlias.withAlias()
 
     private val crossJoinKeyword = comma or {
         (Keyword.CROSS.parser() or { Keyword.FULL.parser() skipL ws skipL Keyword.OUTER.parser() })
@@ -72,8 +63,9 @@ object SourceParser {
 
     private val sourceParsers: List<Parser<Source>> = listOf(
         joins(arg = { source(skipParsers = 1) }),
+        ({ query }.inParentheses() + (ws1 skipL alias)).attempt().map { (query, alias) -> SubQuerySource(query, alias) },
         { source }.inParentheses(),
-        sqlIdSource
+        (sqlId + (ws1 skipL alias).optional()).map { (sqlId, alias) -> SqlIdSource(sqlId, alias) }
     )
 
     val source: Parser<Source> = source(skipParsers = 0)
@@ -118,17 +110,4 @@ object SourceParser {
             )
         }
     }
-
-    private fun Parser<SourceWithoutAlias>.withAlias(): Parser<Source> =
-        this.flatMap { source ->
-            when(source) {
-                is QueryWithoutAlias ->
-                    (ws1 skipL alias)
-                        .map { alias -> QuerySource(source.get, alias) }
-                is SqlIdWithoutAlias ->
-                    (ws1 skipL alias).optional()
-                        .map { alias -> SqlIdSource(source.get, alias) }
-                is JoinWithoutAlias -> succeed(source.get)
-            }
-        }
 }

@@ -10,7 +10,6 @@ import io.github.paulpaulych.parser.TextParsersDsl.skipR
 import io.github.paulpaulych.sql.CommonSqlParsers.anyWord
 import io.github.paulpaulych.sql.CommonSqlParsers.columnsByComma
 import io.github.paulpaulych.sql.CommonSqlParsers.comma
-import io.github.paulpaulych.sql.CommonSqlParsers.excludingKeywords
 import io.github.paulpaulych.sql.CommonSqlParsers.intValue
 import io.github.paulpaulych.sql.CommonSqlParsers.sortOrder
 import io.github.paulpaulych.sql.CommonSqlParsers.parser
@@ -21,7 +20,7 @@ import io.github.paulpaulych.sql.SourceParser.source
 object QueryParser {
 
     private val selectedItems: Parser<List<SelectedItem>> =
-        ((ws skipL expr skipR ws) + (Keyword.AS.parser() skipL ws skipL anyWord.excludingKeywords()).optional())
+        ((ws skipL expr skipR ws) + (Keyword.AS.parser() skipL ws skipL anyWord).optional())
             .sepBy1(comma)
             .map { items -> items.map { (e, alias) -> SelectedItem(e, alias) } }
 
