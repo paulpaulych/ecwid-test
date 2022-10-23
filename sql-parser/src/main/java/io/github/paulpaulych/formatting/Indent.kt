@@ -3,10 +3,11 @@ package io.github.paulpaulych.formatting
 data class Indent(
     val value: String
 ) {
-    fun append() = Indent("$value  ")
+    fun append() = this + default()
 
     companion object {
         fun empty() = Indent("")
+        fun default() = Indent("    ")
     }
 
     operator fun plus(indent: Indent): Indent =

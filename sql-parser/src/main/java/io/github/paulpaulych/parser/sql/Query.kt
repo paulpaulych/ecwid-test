@@ -115,7 +115,7 @@ sealed interface Expr {
         override fun toString() = fmt(indent = Indent.empty())
     }
 
-    data class QueryExpr(val query: Query): Expr {
+    data class SubQueryExpr(val query: Query): Expr {
         override fun toString() = fmt(indent = Indent.empty())
     }
 

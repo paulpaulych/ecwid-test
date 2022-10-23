@@ -305,19 +305,19 @@ class ExprParserTest: DescribeSpec({
 
     it("query expression parser") {
         expectSuccess(parser,
-            "(select * from a)" to QueryExpr(
+            "(select * from a)" to SubQueryExpr(
                 Query(
-                columns = listOf(
-                    SelectedItem(ColumnExpr(Column("*", null)), alias = null)
-                ),
-                source = SqlIdSource(SqlId(null, "a"), null),
-                where= null,
-                groupBy= listOf(),
-                having = null,
-                sorts = listOf(),
-                limit = null,
-                offset = null
-            )
+                    columns = listOf(
+                        SelectedItem(ColumnExpr(Column("*", null)), alias = null)
+                    ),
+                    source = SqlIdSource(SqlId(null, "a"), null),
+                    where= null,
+                    groupBy= listOf(),
+                    having = null,
+                    sorts = listOf(),
+                    limit = null,
+                    offset = null
+                )
             )
         )
     }

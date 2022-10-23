@@ -2,88 +2,138 @@ package io.github.paulpaulych.formatting
 
 import io.github.paulpaulych.parser.sql.*
 import io.github.paulpaulych.parser.sql.Expr.*
+import io.github.paulpaulych.parser.sql.Op2Type.*
 import io.github.paulpaulych.parser.sql.Source.*
-import java.lang.System.lineSeparator
+
+private val ls = System.lineSeparator()
 
 fun Query.fmt(
     indent: Indent
 ): String {
-    val ls = lineSeparator()
-    val lsWithIndent = lineSeparator() + indent
-    val lsWithIndent1 = lineSeparator() + indent + "\t"
-    return indent + "SELECT ${columns.joinToString(", ")}" +
-            lineSeparator() + indent + "FROM $source" +
-            (where?.let { lineSeparator() + "WHERE $it" } ?: "") +
-            (groupBy.takeIf { it.isNotEmpty() }?.let { lineSeparator() + "GROUP BY ${it.joinToString(", ")}" } ?: "") +
-            (having?.let { lineSeparator() + "HAVING $it" } ?: "") +
-            (sorts.takeIf { it.isNotEmpty() }?.let { lineSeparator() + "ORDER BY ${it.joinToString(", ")}" } ?: "") +
-            (limit?.let { lineSeparator() + "LIMIT $it"} ?: "") +
-            (offset?.let { lineSeparator() + "OFFSET $it" } ?: "")
+    return indent + "SELECT" + ls +
+            fmtColumns(indent, columns) +
+            ls + indent + "FROM ${source.fmt(indent)}" +
+            (where
+                ?.let { ls + indent + "WHERE ${it.fmt(indent)}" }
+                ?: "") +
+            (groupBy.takeIf { it.isNotEmpty() }
+                ?.let { ls + indent + "GROUP BY ${it.joinToString(", ")}" }
+                ?: "") +
+            (having
+                ?.let { ls + indent + "HAVING ${it.fmt(indent)}" }
+                ?: "") +
+            (sorts.takeIf { it.isNotEmpty() }
+                ?.let { sorts -> ls + indent + "ORDER BY ${ sorts.joinToString(", ") { sort -> sort.fmt(indent) }}" }
+                ?: "") +
+            (limit
+                ?.let { ls + indent + "LIMIT $it"}
+                ?: "") +
+            (offset
+                ?.let { ls + indent + "OFFSET $it" }
+                ?: "")
 }
 
-fun SelectedItem.fmt(
-    indent: Indent
-): String {
-    return alias?.let { "$expr as $it" } ?: expr.toString()
+fun SelectedItem.fmt(indent: Indent): String {
+    val expr = expr.fmt(indent)
+    return indent.append() + (alias?.let { "$expr as $it" } ?: expr)
 }
 
-fun JoinSource.fmt(
-    indent: Indent
-) = "($lhs ${type.name} JOIN $rhs" + (condition?.let { " ON $it)" } ?: ")")
+fun JoinSource.fmt(indent: Indent): String =
+    "${lhs.fmt(indent)}$ls${indent.append()}${type.name} JOIN ${rhs.fmt(indent)}" + (condition?.let { " ON $it" } ?: "")
 
-fun SubQuerySource.fmt(
-    indent: Indent
-) = "($query) as $alias"
+fun SubQuerySource.fmt(indent: Indent): String =
+    "${fmtSubQuery(indent, query)} AS $alias"
 
-fun SqlIdSource.fmt() = alias?.let { "$sqlId $it" } ?: sqlId.toString()
+fun SqlIdSource.fmt(): String = alias?.let { "$sqlId $it" } ?: sqlId.toString()
 
-fun SqlId.fmt() = schema?.let { "$it.$name" } ?: name
+fun SqlId.fmt(): String = schema?.let { "$it.$name" } ?: name
 
-fun Column.fmt() = source?.let { "$it.$name" } ?: name
+fun Column.fmt(): String = source?.let { "$it.$name" } ?: name
 
-fun Op1Type.fmt() = when(this) {
+fun Op1Type.fmt(): String = when(this) {
     Op1Type.UN_MINUS -> "-"
     Op1Type.UN_PLUS -> "+"
     Op1Type.NOT -> "NOT"
 }
 
-fun Op2Type.fmt() = when(this) {
-    Op2Type.OR -> "OR"
-    Op2Type.AND -> "AND"
-    Op2Type.EQ -> "="
-    Op2Type.NEQ -> "!="
-    Op2Type.GT -> ">"
-    Op2Type.GTE -> ">="
-    Op2Type.LT -> "<"
-    Op2Type.LTE -> "<="
-    Op2Type.PLUS -> "+"
-    Op2Type.MINUS -> "-"
-    Op2Type.MOD -> "%"
-    Op2Type.DIV -> "/"
-    Op2Type.MULT -> "*"
+fun Op2Type.fmt(): String = when(this) {
+    OR -> "OR"
+    AND -> "AND"
+    EQ -> "="
+    NEQ -> "!="
+    GT -> ">"
+    GTE -> ">="
+    LT -> "<"
+    LTE -> "<="
+    PLUS -> "+"
+    MINUS -> "-"
+    MOD -> "%"
+    DIV -> "/"
+    MULT -> "*"
 }
 
-fun IntExpr.fmt() = value.toString()
+fun IntExpr.fmt(): String = value.toString()
 
-fun DoubleExpr.fmt() = value.toString()
+fun DoubleExpr.fmt(): String = value.toString()
 
-fun StrExpr.fmt() = value
+fun StrExpr.fmt(): String = value
 
-fun BoolExpr.fmt() = when(this.value) {
-    true -> Keyword.TRUE.value.uppercase()
-    false -> Keyword.FALSE.value.uppercase()
+fun BoolExpr.fmt(): String = when(this.value) {
+    true -> Keyword.TRUE.value.lowercase()
+    false -> Keyword.FALSE.value.lowercase()
 }
 
-fun SqlNullExpr.fmt() = Keyword.NULL.value.uppercase()
+@Suppress("unused")
+fun SqlNullExpr.fmt(): String =
+    Keyword.NULL.value.uppercase()
 
-fun ColumnExpr.fmt() = column.fmt()
+fun ColumnExpr.fmt(): String =
+    column.fmt()
 
-fun FunExpr.fmt(indent: Indent) = "$function(${args.joinToString(", ")})"
+fun FunExpr.fmt(indent: Indent): String =
+    "$function(${args.joinToString(", ") { it.fmt(indent) }})"
 
-fun QueryExpr.fmt(indent: Indent) = "($query)"
+fun SubQueryExpr.fmt(indent: Indent): String =
+    fmtSubQuery(indent, query)
 
-fun Op1Expr.fmt(indent: Indent) = "$op($arg)"
+fun Op1Expr.fmt(indent: Indent): String =
+    "${op.fmt()}(${arg.fmt(indent)})"
 
-fun Op2Expr.fmt(indent: Indent) = "($lhs $op $rhs)"
+fun Op2Expr.fmt(indent: Indent): String =
+    when(this.op) {
+        OR -> "${lhs.fmt(indent)}$ls${indent.append()}$op ${rhs.fmt(indent)}"
+        AND -> "${lhs.fmt(indent)}$ls${indent.append().append()}$op ${rhs.fmt(indent)}"
+        EQ, NEQ, GT, GTE, LT,
+        LTE, PLUS, MINUS, MOD, DIV,
+        MULT -> "${lhs.fmt(indent)} $op ${rhs.fmt(indent)}"
+    }
 
-fun Sort.fmt(indent: Indent) = "$expr $direction"
+fun Sort.fmt(indent: Indent) = "${expr.fmt(indent)} $direction"
+
+private fun fmtSubQuery(indent: Indent, query: Query) = "($ls${query.fmt(indent.append().append())}$ls${indent.append()})"
+
+private fun fmtColumns(
+    indent: Indent,
+    columns: List<SelectedItem>
+): String {
+    return columns.joinToString(",$ls") { it.fmt(indent) }
+}
+
+private fun Source.fmt(indent: Indent) = when(this) {
+    is JoinSource -> fmt(indent)
+    is SqlIdSource -> fmt()
+    is SubQuerySource -> fmt(indent)
+}
+
+private fun Expr.fmt(indent: Indent) = when(this) {
+    is BoolExpr -> fmt()
+    is ColumnExpr -> fmt()
+    is DoubleExpr -> fmt()
+    is FunExpr -> fmt(indent)
+    is IntExpr -> fmt()
+    is Op1Expr -> fmt(indent)
+    is Op2Expr -> fmt(indent)
+    is SubQueryExpr -> fmt(indent)
+    is SqlNullExpr -> fmt()
+    is StrExpr -> fmt()
+}

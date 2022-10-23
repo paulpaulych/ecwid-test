@@ -2,6 +2,11 @@ package io.github.paulpaulych.parser.sql
 
 import io.github.paulpaulych.TestUtils.expectSuccess
 import io.github.paulpaulych.parser.sql.Expr.*
+import io.github.paulpaulych.parser.sql.Fixtures.crossJoin
+import io.github.paulpaulych.parser.sql.Fixtures.innerJoin
+import io.github.paulpaulych.parser.sql.Fixtures.leftJoin
+import io.github.paulpaulych.parser.sql.Fixtures.rightJoin
+import io.github.paulpaulych.parser.sql.Fixtures.tableA
 import io.github.paulpaulych.parser.sql.JoinType.*
 import io.github.paulpaulych.parser.sql.Op2Type.EQ
 import io.github.paulpaulych.parser.sql.Op2Type.LT
@@ -211,9 +216,3 @@ class SourceParserTest : DescribeSpec({
         )
     }
 })
-
-private fun crossJoin(l: Source, r: Source) = JoinSource(CROSS, null, l, r)
-private fun innerJoin(e: Expr, l: Source, r: Source) = JoinSource(INNER, e, l, r)
-private fun leftJoin(cond: Expr, l: Source, r: Source) = JoinSource(LEFT, cond, l, r)
-private fun rightJoin(e: Expr, l: Source, r: Source) = JoinSource(RIGHT, e, l, r)
-private fun tableA(alias: String) = SqlIdSource(SqlId(schema = null, name = "a"), alias = alias)

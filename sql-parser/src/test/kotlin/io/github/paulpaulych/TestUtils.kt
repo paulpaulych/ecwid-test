@@ -86,6 +86,10 @@ object TestUtils {
         }
     }
 
+    infix fun String.shouldHaveSameLines(other: String) {
+        this.lines() shouldContainExactly other.lines()
+    }
+
     fun <A> runParserTest(
         vararg cases: Row3<Parser<A>, String, ParseResult<A>>
     ) {

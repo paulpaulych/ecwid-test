@@ -55,7 +55,7 @@ object ExprParser {
     private val unPlus: Parser<Op1Type> = s("+").map { UN_PLUS }
 
     private val columnExpr: Parser<Expr> = column.map(::ColumnExpr)
-    private val queryExpr: Parser<Expr> = (ws skipL { query }).map(::QueryExpr)
+    private val queryExpr: Parser<Expr> = (ws skipL { query }).map(::SubQueryExpr)
 
     private val exprParsers: List<Parser<Expr>> = listOf(
         samePrecedenceBinOps(Keyword.OR.parser().map { OR }, arg = { expr(skipParsers = 1) }).attempt(),
