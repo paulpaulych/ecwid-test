@@ -1,11 +1,14 @@
 package io.github.paulpaulych
 
-import io.github.paulpaulych.parser.*
-import io.github.paulpaulych.parser.ParseResult.Failure
-import io.github.paulpaulych.parser.ParseResult.Success
 import io.github.paulpaulych.parser.fmt.fmt
-import io.github.paulpaulych.sql.Query
-import io.github.paulpaulych.sql.QueryParser
+import io.github.paulpaulych.parser.lib.ParseResult
+import io.github.paulpaulych.parser.lib.ParseResult.Failure
+import io.github.paulpaulych.parser.lib.ParseResult.Success
+import io.github.paulpaulych.parser.lib.Parser
+import io.github.paulpaulych.parser.lib.StackTrace
+import io.github.paulpaulych.parser.lib.TextParsers
+import io.github.paulpaulych.parser.sql.Query
+import io.github.paulpaulych.parser.sql.QueryParser
 import io.kotest.assertions.fail
 import io.kotest.assertions.withClue
 import io.kotest.data.*
