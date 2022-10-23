@@ -7,6 +7,7 @@ import io.github.paulpaulych.sql.Expr.*
 import io.github.paulpaulych.sql.Expr.LitExpr.*
 import io.github.paulpaulych.sql.Op1Type.*
 import io.github.paulpaulych.sql.Op2Type.*
+import io.github.paulpaulych.sql.Source.SqlIdSource
 import io.kotest.core.spec.style.DescribeSpec
 import io.kotest.matchers.shouldBe
 
@@ -300,6 +301,23 @@ class ExprParserTest: DescribeSpec({
                     IntExpr(500)
                 ),
             )
+        )
+    }
+
+    it("query expression parser") {
+        expectSuccess(parser,
+            "(select * from a)" to QueryExpr(Query(
+                columns = listOf(
+                    SelectedItem(ColumnExpr(Column("*", null)), alias = null)
+                ),
+                source = SqlIdSource(SqlId(null, "a"), null),
+                where= null,
+                groupBy= listOf(),
+                having = null,
+                sorts = listOf(),
+                limit = null,
+                offset = null
+            ))
         )
     }
 

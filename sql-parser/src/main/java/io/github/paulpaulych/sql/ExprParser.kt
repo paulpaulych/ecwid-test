@@ -26,6 +26,7 @@ import io.github.paulpaulych.sql.CommonSqlParsers.ws
 import io.github.paulpaulych.sql.Expr.*
 import io.github.paulpaulych.sql.Op1Type.*
 import io.github.paulpaulych.sql.Op2Type.*
+import io.github.paulpaulych.sql.QueryParser.query
 
 // TODO: optimize with constants
 object ExprParser {
@@ -54,6 +55,7 @@ object ExprParser {
     private val unPlus: Parser<Op1Type> = s("+").map { UN_PLUS }
 
     private val columnExpr: Parser<Expr> = column.map(::ColumnExpr)
+    private val queryExpr: Parser<Expr> = (ws skipL { query }).map(::QueryExpr)
 
     private val exprParsers: List<Parser<Expr>> = listOf(
         samePrecedenceBinOps(Keyword.OR.parser().map { OR }, arg = { expr(skipParsers = 1) }).attempt(),
@@ -64,6 +66,7 @@ object ExprParser {
         samePrecedenceBinOps(divModMult, arg = { expr(skipParsers = 6) }).attempt(),
         unaryOp(unMinus, arg = { expr(skipParsers = 8) }),
         unaryOp(unPlus, arg = { expr(skipParsers = 8) }),
+        queryExpr.inParentheses().attempt(),
         { expr(skipParsers = 0) }.inParentheses(),
         sqlNull.attempt(),
         double,
@@ -109,6 +112,4 @@ object ExprParser {
             .and(args.inParentheses())
             .map { (sqlId, args) -> FunExpr(sqlId, args) }
     }
-
-    private fun queryExpr(): Parser<QueryExpr> = TODO()
 }

@@ -136,7 +136,7 @@ sealed interface Expr {
         override fun toString() = "$function(${args.joinToString(", ")})"
     }
 
-    data class QueryExpr(val query: Query) {
+    data class QueryExpr(val query: Query): Expr {
         override fun toString() = "($query)"
     }
 
