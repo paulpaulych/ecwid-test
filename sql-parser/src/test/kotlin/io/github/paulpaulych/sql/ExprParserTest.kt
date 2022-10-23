@@ -4,7 +4,6 @@ import io.github.paulpaulych.TestUtils.expectFailure
 import io.github.paulpaulych.TestUtils.expectSuccess
 import io.github.paulpaulych.parser.ErrorItem.ParseError
 import io.github.paulpaulych.sql.Expr.*
-import io.github.paulpaulych.sql.Expr.LitExpr.*
 import io.github.paulpaulych.sql.Op1Type.*
 import io.github.paulpaulych.sql.Op2Type.*
 import io.github.paulpaulych.sql.Source.SqlIdSource

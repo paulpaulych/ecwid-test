@@ -4,8 +4,13 @@ import io.github.paulpaulych.common.Either
 import io.github.paulpaulych.common.Either.Left
 import io.github.paulpaulych.common.Either.Right
 import io.github.paulpaulych.parser.*
+import io.github.paulpaulych.parser.fmt.fmt
+import io.github.paulpaulych.sql.Query
+import io.github.paulpaulych.sql.QueryParser
+import io.kotest.assertions.fail
 import io.kotest.assertions.withClue
 import io.kotest.data.*
+import io.kotest.matchers.collections.shouldContainExactly
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.instanceOf
 
@@ -45,6 +50,40 @@ object TestUtils {
                 res shouldBe instanceOf<Left<StackTrace>>()
                 res as Left
                 matcher(res.value)
+            }
+        }
+    }
+
+    fun expectFmtSuccess(vararg cases: Pair<String, String>) {
+        forAll(table(
+            headers("given", "expected"),
+            *cases.map { row(it.first, it.second) }.toTypedArray()
+        )) { given, expected ->
+            when(val result = TextParsers.run(QueryParser.query, given)) {
+                is Left -> {
+                    fail("expected success: ${fmt(result.value)}")
+                }
+                is Right -> {
+                    val query: Query = result.value.get
+                    query.toString().lines() shouldContainExactly expected.lines()
+                }
+            }
+        }
+    }
+
+    fun expectFmtFailure(vararg cases: Pair<String, String>) {
+        forAll(table(
+            headers("given", "expected"),
+            *cases.map { row(it.first, it.second) }.toTypedArray()
+        )) { given, expected ->
+            when(val result = TextParsers.run(QueryParser.query, given)) {
+                is Left -> {
+                    val stacktrace: StackTrace = result.value
+                    fmt(stacktrace).lines() shouldContainExactly expected.lines()
+                }
+                is Right -> {
+                    fail("expected failure: ${result.value.get}")
+                }
             }
         }
     }

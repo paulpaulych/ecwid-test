@@ -20,7 +20,7 @@ import io.github.paulpaulych.parser.TextParsersDsl.sepBy1
 import io.github.paulpaulych.parser.TextParsersDsl.skipL
 import io.github.paulpaulych.parser.TextParsersDsl.skipR
 import io.github.paulpaulych.parser.TextParsersDsl.surround
-import io.github.paulpaulych.sql.Expr.LitExpr.*
+import io.github.paulpaulych.sql.Expr.*
 import io.github.paulpaulych.sql.SortOrder.ASC
 import io.github.paulpaulych.sql.SortOrder.DESC
 

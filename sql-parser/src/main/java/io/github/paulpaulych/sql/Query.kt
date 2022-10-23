@@ -1,32 +1,24 @@
 package io.github.paulpaulych.sql
 
-import java.lang.System.lineSeparator
 
 data class Query(
-    private val columns: List<SelectedItem>,
-    private val source: Source,
-    private val where: Expr?,
-    private val groupBy: List<Column>,
-    private val having: Expr?,
-    private val sorts: List<Sort>,
-    private val limit: Int?,
-    private val offset: Int?,
+    val columns: List<SelectedItem>,
+    val source: Source,
+    val where: Expr?,
+    val groupBy: List<Column>,
+    val having: Expr?,
+    val sorts: List<Sort>,
+    val limit: Int?,
+    val offset: Int?,
 ) {
-    override fun toString() =
-        "SELECT ${columns.joinToString(", ")}" +
-        lineSeparator() + "FROM $source" +
-        (where?.let { lineSeparator() + "WHERE $it" } ?: "") +
-        (groupBy.takeIf { it.isNotEmpty() }?.let { lineSeparator() + "GROUP BY ${it.joinToString(", ")}" } ?: "") +
-        (having?.let { lineSeparator() + "HAVING $it" } ?: "") +
-        (sorts.takeIf { it.isNotEmpty() }?.let { lineSeparator() + "ORDER BY ${it.joinToString(", ")}" } ?: "") +
-        (limit?.let { lineSeparator() + "LIMIT $it"} ?: "") +
-        (offset?.let { lineSeparator() + "OFFSET $it" } ?: "")
+    override fun toString() = fmt(indent = Indent.empty())
 }
+
 data class SelectedItem(
     val expr: Expr,
     val alias: String?
 ) {
-    override fun toString() = alias?.let { "$expr as $it" } ?: expr.toString()
+    override fun toString() = fmt(indent = Indent.empty())
 }
 
 enum class JoinType { CROSS, INNER, LEFT, RIGHT }
@@ -39,21 +31,21 @@ sealed interface Source {
         val lhs: Source,
         val rhs: Source
     ): Source {
-        override fun toString() = "($lhs ${type.name} JOIN $rhs" + (condition?.let { " ON $it)" } ?: ")")
+        override fun toString() = fmt(indent = Indent.empty())
     }
 
     data class SubQuerySource(
         val query: Query,
         val alias: String
     ): Source {
-        override fun toString() = "($query) as $alias"
+        override fun toString() = fmt(indent = Indent.empty())
     }
 
     data class SqlIdSource(
         val sqlId: SqlId,
         val alias: String?,
     ): Source {
-        override fun toString() = alias?.let { "$sqlId $it" } ?: sqlId.toString()
+        override fun toString() = fmt()
     }
 }
 
@@ -64,24 +56,20 @@ data class SqlId(
     val schema: String?,
     val name: String
 ) {
-    override fun toString() = schema?.let { "$it.$name" } ?: name
+    override fun toString() = fmt()
 }
 
 data class Column(
     val name: String,
     val source: SqlId?,
 ) {
-    override fun toString() = source?.let { "$it.$name" } ?: name
+    override fun toString() = fmt()
 }
 
 enum class Op1Type {
     UN_MINUS, UN_PLUS, NOT;
 
-    override fun toString(): String = when(this) {
-        UN_MINUS -> "-"
-        UN_PLUS -> "+"
-        NOT -> "NOT"
-    }
+    override fun toString() = fmt()
 }
 
 enum class Op2Type {
@@ -91,60 +79,48 @@ enum class Op2Type {
 
     PLUS, MINUS, MOD, DIV, MULT;
 
-    override fun toString(): String = when(this) {
-        OR -> "OR"
-        AND -> "AND"
-        EQ -> "="
-        NEQ -> "!="
-        GT -> ">"
-        GTE -> ">="
-        LT -> "<"
-        LTE -> "<="
-        PLUS -> "+"
-        MINUS -> "-"
-        MOD -> "%"
-        DIV -> "/"
-        MULT -> "*"
-    }
+    override fun toString() = fmt()
 }
 
 sealed interface Expr {
 
-    sealed interface LitExpr: Expr {
-        data class IntExpr(val value: Int): LitExpr {
-            override fun toString() = value.toString()
-        }
-        data class DoubleExpr(val value: Double): LitExpr {
-            override fun toString() = value.toString()
-        }
-        data class StrExpr(val value: String): LitExpr {
-            override fun toString() = value
-        }
-        data class BoolExpr(val value: Boolean): LitExpr {
-            override fun toString() = value.toString()
-        }
-        object SqlNullExpr: LitExpr {
-            override fun toString() = "null"
-        }
+    data class IntExpr(val value: Int): Expr {
+        override fun toString() = fmt()
+    }
+
+    data class DoubleExpr(val value: Double): Expr {
+        override fun toString() = fmt()
+    }
+
+    data class StrExpr(val value: String): Expr {
+        override fun toString() = fmt()
+    }
+
+    data class BoolExpr(val value: Boolean): Expr {
+        override fun toString() = fmt()
+    }
+
+    object SqlNullExpr: Expr {
+        override fun toString() = fmt()
     }
 
     data class ColumnExpr(val column: Column): Expr {
-        override fun toString() = column.toString()
+        override fun toString() = fmt()
     }
 
     data class FunExpr(val function: SqlId, val args: List<Expr>): Expr {
-        override fun toString() = "$function(${args.joinToString(", ")})"
+        override fun toString() = fmt(indent = Indent.empty())
     }
 
     data class QueryExpr(val query: Query): Expr {
-        override fun toString() = "($query)"
+        override fun toString() = fmt(indent = Indent.empty())
     }
 
     data class Op1Expr(val op: Op1Type, val arg: Expr): Expr {
-        override fun toString() = "$op($arg)"
+        override fun toString() = fmt(indent = Indent.empty())
     }
     data class Op2Expr(val op: Op2Type, val lhs: Expr, val rhs: Expr): Expr {
-        override fun toString() = "($lhs $op $rhs)"
+        override fun toString() = fmt(indent = Indent.empty())
     }
 }
 
@@ -153,4 +129,6 @@ enum class SortOrder { ASC, DESC }
 data class Sort(
     val expr: Expr,
     val direction: SortOrder
-)
+) {
+    override fun toString() = fmt(indent = Indent.empty())
+}
