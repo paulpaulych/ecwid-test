@@ -1,7 +1,7 @@
 package io.github.paulpaulych.sql
 
-import io.github.paulpaulych.common.Either.Left
 import io.github.paulpaulych.parser.ErrorItem.ParseError
+import io.github.paulpaulych.parser.ParseResult.Failure
 import io.github.paulpaulych.parser.Parser
 import io.github.paulpaulych.parser.StackTrace
 import io.github.paulpaulych.parser.TextParsers.optional
@@ -125,18 +125,18 @@ object CommonSqlParsers {
         )
     }
 
-    fun Parser<String>.excludingKeywords(): Parser<String> =
-        this.flatMap { value ->
-            if (value in Keyword.ALL) {
-                Parser { state -> Left(StackTrace(state, ParseError("not keyword", "$value not allowed here"))) }
-            } else {
-                succeed(value)
-            }
-        }
-
     fun <A> Parser<A>.inParentheses(): Parser<A> =
         { this }.inParentheses()
 
     fun <A> (() -> Parser<A>).inParentheses(): Parser<A> =
         surround(s("("), s(")"), ws skipL this skipR ws)
+
+    private fun Parser<String>.excludingKeywords(): Parser<String> =
+        this.flatMap { value ->
+            if (value in Keyword.ALL) {
+                Parser { state -> Failure(StackTrace(state, ParseError("not keyword", "$value not allowed here"))) }
+            } else {
+                succeed(value)
+            }
+        }
 }

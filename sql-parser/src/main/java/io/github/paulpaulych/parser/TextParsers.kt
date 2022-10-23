@@ -1,9 +1,9 @@
 package io.github.paulpaulych.parser
 
 import io.github.paulpaulych.common.*
-import io.github.paulpaulych.common.Either.Left
-import io.github.paulpaulych.common.Either.Right
 import io.github.paulpaulych.parser.ErrorItem.ParseError
+import io.github.paulpaulych.parser.ParseResult.Failure
+import io.github.paulpaulych.parser.ParseResult.Success
 import io.github.paulpaulych.parser.TextParsersDsl.defer
 import io.github.paulpaulych.parser.TextParsersDsl.or
 
@@ -12,10 +12,10 @@ object TextParsers {
     fun string(s: String): Parser<String> =
         Parser { state: State ->
             when (val idx = firstNonMatchingIndex(s, state.input, state.offset)) {
-                null -> Right(Success(s, s.length))
+                null -> Success(s, s.length)
                 else -> {
                     val scope = "'$s'"
-                    Left(StackTrace(
+                    Failure(StackTrace(
                         state = state.advanceBy(idx),
                         error = ParseError(scope = scope, message = "expected $scope"),
                         isCommitted = idx != 0,
@@ -30,24 +30,23 @@ object TextParsers {
             when (val prefix = location.input.findPrefixMatching(regex, location.offset)) {
                 null -> {
                     val scope = "expression matching regex '$regex'"
-                    Left(StackTrace(
+                    Failure(StackTrace(
                         state = location,
                         error = ParseError(scope = scope, "expected $scope"),
                         isCommitted = false,
                         cause = null
                     ))
                 }
-                else -> Right(Success(prefix, prefix.length))
+                else -> Success(prefix, prefix.length)
             }
         }
 
-    // TODO: make regular expression
     fun notEof(): Parser<Unit> =
         Parser { state ->
             if (state.offset < state.input.length) {
-                Right(Success(Unit, 0))
+                Success(Unit, 0)
             } else {
-                Left(StackTrace(
+                Failure(StackTrace(
                     state = state,
                     error = ParseError("not end of input", "end of input found"),
                     isCommitted = false,
@@ -57,26 +56,25 @@ object TextParsers {
         }
 
     fun <A> succeed(a: A): Parser<A> =
-        Parser { Right(Success(a, 0)) }
+        Parser { Success(a, 0) }
 
     fun <A> oneOf(parsers: Sequence<Parser<out A>>): Parser<A> =
         Parser { state ->
-            var curErr: StackTrace? = null
+            var curErr: Failure? = null
             for (next in parsers) {
-                if (curErr != null && curErr.isCommitted) {
-                    return@Parser Left(curErr)
+                if (curErr != null && curErr.get.isCommitted) {
+                    return@Parser curErr
                 }
                 val nextRes = next.parse(state)
-                if (nextRes !is Left) {
+                if (nextRes !is Failure) {
                     return@Parser nextRes
                 }
-                val nexErr = nextRes.value
-                curErr = nexErr.takeIf { it.isCommitted }
-                        ?: curErr
-                        ?.appendFailedScopes(nextRes.value.error.failedScopes())
-                        ?: nextRes.value
+
+                curErr = nextRes.takeIf { it.get.isCommitted }
+                        ?: curErr?.get?.appendFailedScopes(nextRes.get.error.failedScopes())?.let(::Failure)
+                        ?: nextRes
             }
-            curErr?.let(::Left) ?: throw IllegalStateException("empty parser sequence given")
+            curErr ?: throw IllegalStateException("empty parser sequence given")
         }
 
     fun <A, B> flatMap(pa: Parser<A>, f: (A) -> Parser<B>): Parser<B> =
@@ -87,10 +85,10 @@ object TextParsers {
                 val newLocation = location.advanceBy(aSuccess.consumed)
                 val bResult = pb.parse(newLocation)
                 bResult
-                    .mapLeft { bErr ->
+                    .mapFailure { bErr ->
                         bErr.appendCommitted(isCommitted = aSuccess.consumed != 0)
                     }
-                    .map { bSuccess ->
+                    .flatMap { bSuccess ->
                         bSuccess.advanceConsumed(aSuccess.consumed)
                     }
             }
@@ -103,7 +101,7 @@ object TextParsers {
     ): Parser<A> = Parser { state ->
         parser
             .parse(state)
-            .mapLeft { stackTrace ->
+            .mapFailure { stackTrace ->
                 stackTrace.addSegment(state, scope, msg)
             }
     }
@@ -112,7 +110,7 @@ object TextParsers {
         this.attempt() or succeed(null).defer()
 
     fun <A> Parser<A>.attempt(): Parser<A> =
-        Parser { state -> this.parse(state).mapLeft { it.uncommit() }}
+        Parser { state -> this.parse(state).mapFailure { it.uncommit() }}
 
     /**
      * does not affect on state: no symbols will be consumed
@@ -120,12 +118,12 @@ object TextParsers {
     fun <A> Parser<A>.peekOnly(): Parser<A> =
         Parser { state ->
             when(val res = this.parse(state)) {
-                is Left -> res
-                is Right -> Right(res.value.copy(consumed = 0))
+                is Failure -> res
+                is Success -> res.copy(consumed = 0)
             }
         }
 
-    fun <A> run(p: Parser<A>, input: String): Either<StackTrace, Success<A>> {
+    fun <A> run(p: Parser<A>, input: String): ParseResult<A> {
         return p.parse(State(input = input, offset = 0))
     }
 }

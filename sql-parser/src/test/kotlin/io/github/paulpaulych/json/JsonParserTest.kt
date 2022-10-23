@@ -2,11 +2,10 @@ package io.github.paulpaulych.json
 
 import io.github.paulpaulych.TestUtils.ok
 import io.github.paulpaulych.TestUtils.runParserTest
-import io.github.paulpaulych.common.Either.Left
-import io.github.paulpaulych.common.Either.Right
 import io.github.paulpaulych.json.JSON.*
 import io.github.paulpaulych.parser.ErrorItem.ParseError
 import io.github.paulpaulych.parser.ErrorItem.ScopesTried
+import io.github.paulpaulych.parser.ParseResult.*
 import io.github.paulpaulych.parser.StackTrace
 import io.github.paulpaulych.parser.State
 import io.github.paulpaulych.parser.TextParsers
@@ -53,7 +52,7 @@ class JsonParserTest: DescribeSpec({
             )
         ) { input ->
             val res = TextParsers.run(parser, input)
-            with((res as Left<StackTrace>).value) {
+            with((res as Failure).get) {
                 state shouldBe State(input, 0)
                 error shouldBe ParseError("literal", "invalid literal syntax")
                 with(checkNotNull(cause)) {
@@ -97,7 +96,7 @@ class JsonParserTest: DescribeSpec({
             )
         ) { input, matcher ->
             val res = TextParsers.run(parser, input)
-            matcher((res as Left).value)
+            matcher((res as Failure).get)
         }
     }
 
@@ -125,7 +124,7 @@ class JsonParserTest: DescribeSpec({
         }"""
 
         val res = TextParsers.run(parser, json)
-        (res as Right).value.get shouldBe JObject(mapOf(
+        (res as Success).get shouldBe JObject(mapOf(
             "a" to JBoolean(true),
             "b" to JObject(mapOf("k" to JArray(listOf(JNumber(45.5), JObject(mapOf("innerKey" to JBoolean(false))))))),
             "c" to JNumber(17.3),
@@ -145,8 +144,8 @@ class JsonParserTest: DescribeSpec({
             2], "f": null 
         }"""
 
-        val res = TextParsers.run(JsonParser.rootJson(), json) as Left
-        with(res.value) {
+        val res = TextParsers.run(JsonParser.rootJson(), json) as Failure
+        with(res.get) {
             state shouldBe State(json, 0)
             error shouldBe ParseError("JSON", "invalid JSON syntax")
             with(checkNotNull(cause)) {
@@ -194,9 +193,9 @@ class JsonParserTest: DescribeSpec({
             2], "f": null 
         }"""
 
-        val res = TextParsers.run(JsonParser.rootJson(), json) as Left
+        val res = TextParsers.run(JsonParser.rootJson(), json) as Failure
 
-        fmt(res.value).lines() shouldContainExactly """
+        fmt(res.get).lines() shouldContainExactly """
             stacktrace:
             [1:1] invalid JSON syntax: invalid object syntax
             [2:25] invalid field syntax

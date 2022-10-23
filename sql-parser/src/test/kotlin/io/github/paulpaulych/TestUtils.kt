@@ -1,9 +1,8 @@
 package io.github.paulpaulych
 
-import io.github.paulpaulych.common.Either
-import io.github.paulpaulych.common.Either.Left
-import io.github.paulpaulych.common.Either.Right
 import io.github.paulpaulych.parser.*
+import io.github.paulpaulych.parser.ParseResult.Failure
+import io.github.paulpaulych.parser.ParseResult.Success
 import io.github.paulpaulych.parser.fmt.fmt
 import io.github.paulpaulych.sql.Query
 import io.github.paulpaulych.sql.QueryParser
@@ -28,9 +27,9 @@ object TestUtils {
         ) { source, expected ->
             val res = TextParsers.run(parser, source)
             withClue(res) {
-                res shouldBe instanceOf<Right<Success<A>>>()
-                res as Right
-                res.value.get shouldBe expected
+                res shouldBe instanceOf<Success<A>>()
+                res as Success
+                res.get shouldBe expected
             }
         }
     }
@@ -47,9 +46,9 @@ object TestUtils {
         ) { source, matcher ->
             val res = TextParsers.run(parser, source)
             withClue(res) {
-                res shouldBe instanceOf<Left<StackTrace>>()
-                res as Left
-                matcher(res.value)
+                res shouldBe instanceOf<Failure>()
+                res as Failure
+                matcher(res.get)
             }
         }
     }
@@ -60,11 +59,11 @@ object TestUtils {
             *cases.map { row(it.first, it.second) }.toTypedArray()
         )) { given, expected ->
             when(val result = TextParsers.run(QueryParser.query, given)) {
-                is Left -> {
-                    fail("expected success: ${fmt(result.value)}")
+                is Failure -> {
+                    fail("expected success: ${fmt(result.get)}")
                 }
-                is Right -> {
-                    val query: Query = result.value.get
+                is Success -> {
+                    val query: Query = result.get
                     query.toString().lines() shouldContainExactly expected.lines()
                 }
             }
@@ -77,19 +76,19 @@ object TestUtils {
             *cases.map { row(it.first, it.second) }.toTypedArray()
         )) { given, expected ->
             when(val result = TextParsers.run(QueryParser.query, given)) {
-                is Left -> {
-                    val stacktrace: StackTrace = result.value
+                is Failure -> {
+                    val stacktrace: StackTrace = result.get
                     fmt(stacktrace).lines() shouldContainExactly expected.lines()
                 }
-                is Right -> {
-                    fail("expected failure: ${result.value.get}")
+                is Success -> {
+                    fail("expected failure: ${result.get}")
                 }
             }
         }
     }
 
     fun <A> runParserTest(
-        vararg cases: Row3<Parser<A>, String, Either<StackTrace, Success<A>>>
+        vararg cases: Row3<Parser<A>, String, ParseResult<A>>
     ) {
         forAll(
             table(
@@ -101,7 +100,7 @@ object TestUtils {
         }
     }
 
-    fun <A> ok(a: A, consumed: Int) = Right(Success(a, consumed))
-    fun err(stack: StackTrace) = Left(stack)
+    fun <A> ok(a: A, consumed: Int) = Success(a, consumed)
+    fun err(stack: StackTrace) = Failure(stack)
 
 }
