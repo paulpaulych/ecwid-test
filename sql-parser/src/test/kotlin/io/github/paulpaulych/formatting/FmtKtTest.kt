@@ -18,6 +18,29 @@ import io.kotest.core.spec.style.DescribeSpec
 
 class FmtKtTest: DescribeSpec({
 
+    it("minimal sql fmt") {
+        val res = Query(
+            columns = listOf(
+                SelectedItem(IntExpr(1), "a"),
+                SelectedItem(IntExpr(2), "b"),
+            ),
+            source = tableSource("c"),
+            where = null,
+            groupBy = listOf(),
+            having = null,
+            sorts = listOf(),
+            limit = null,
+            offset = null
+        ).fmt()
+
+        res shouldHaveSameLines """
+            SELECT
+                1 as a,
+                2 as b
+            FROM c
+        """.trimIndent()
+    }
+
     it("query fmt") {
         val res = Query(
             columns = listOf(
@@ -44,7 +67,7 @@ class FmtKtTest: DescribeSpec({
             ),
             limit = 12,
             offset = 15
-        ).fmt(Indent.empty())
+        ).fmt()
 
         res shouldHaveSameLines """
             SELECT
@@ -126,43 +149,43 @@ class FmtKtTest: DescribeSpec({
             ),
             limit = 12,
             offset = 15
-        ).fmt(Indent.empty())
+        ).fmt()
 
         res shouldHaveSameLines """
             SELECT
                 1 as a,
                 1 + (
-                    SELECT
-                        1 as sub_a,
-                        2 as sub_b
-                    FROM sub_a
-                        INNER JOIN sub_b ON false
-                        CROSS JOIN sub_c
-                    WHERE 1 <= 2
-                            AND 3 >= 4
-                    GROUP BY sub_col1, sub_col2
-                    HAVING 5 <= 6
-                    ORDER BY sub_col3 ASC, sub_col4 DESC
-                    LIMIT 13
-                    OFFSET 16
-                ) - 7 as sub,
+                        SELECT
+                            1 as sub_a,
+                            2 as sub_b
+                        FROM sub_a
+                            INNER JOIN sub_b ON false
+                            CROSS JOIN sub_c
+                        WHERE 1 <= 2
+                                AND 3 >= 4
+                        GROUP BY sub_col1, sub_col2
+                        HAVING 5 <= 6
+                        ORDER BY sub_col3 ASC, sub_col4 DESC
+                        LIMIT 13
+                        OFFSET 16
+                    ) - 7 as sub,
                 2 as b
             FROM a
                 INNER JOIN (
-                    SELECT
-                        1 as sub_a,
-                        2 as sub_b
-                    FROM sub_a
-                        INNER JOIN sub_b ON false
-                        CROSS JOIN sub_c
-                    WHERE 1 <= 2
-                            AND 3 >= 4
-                    GROUP BY sub_col1, sub_col2
-                    HAVING 5 <= 6
-                    ORDER BY sub_col3 ASC, sub_col4 DESC
-                    LIMIT 13
-                    OFFSET 16
-                ) AS sub ON false
+                               SELECT
+                                   1 as sub_a,
+                                   2 as sub_b
+                               FROM sub_a
+                                   INNER JOIN sub_b ON false
+                                   CROSS JOIN sub_c
+                               WHERE 1 <= 2
+                                       AND 3 >= 4
+                               GROUP BY sub_col1, sub_col2
+                               HAVING 5 <= 6
+                               ORDER BY sub_col3 ASC, sub_col4 DESC
+                               LIMIT 13
+                               OFFSET 16
+                           ) AS sub ON false
                 CROSS JOIN c
             WHERE 1 <= 2
                     AND 3 >= 4
