@@ -74,12 +74,6 @@ data class Column(
     override fun toString() = source?.let { "$it.$name" } ?: name
 }
 
-data class Wildcard(
-    val source: String?,
-) {
-    override fun toString() = source?.let { "$it.*" } ?: "*"
-}
-
 enum class Op1Type {
     UN_MINUS, UN_PLUS, NOT;
 
@@ -116,9 +110,7 @@ enum class Op2Type {
 
 sealed interface Expr {
 
-    sealed interface ValueExpr: Expr
-
-    sealed interface LitExpr: ValueExpr {
+    sealed interface LitExpr: Expr {
         data class IntExpr(val value: Int): LitExpr {
             override fun toString() = value.toString()
         }
@@ -136,19 +128,15 @@ sealed interface Expr {
         }
     }
 
-    sealed interface SelectableExpr: ValueExpr {
-        data class ColumnExpr(val column: Column): SelectableExpr {
-            override fun toString() = column.toString()
-        }
-        data class WildcardExpr(val wildcard: Wildcard): SelectableExpr {
-            override fun toString() = wildcard.toString()
-        }
+    data class ColumnExpr(val column: Column): Expr {
+        override fun toString() = column.toString()
     }
 
-    data class FunExpr(val function: SqlId, val args: List<Expr>): ValueExpr {
+    data class FunExpr(val function: SqlId, val args: List<Expr>): Expr {
         override fun toString() = "$function(${args.joinToString(", ")})"
     }
-    data class QueryExpr(val query: Query): ValueExpr {
+
+    data class QueryExpr(val query: Query) {
         override fun toString() = "($query)"
     }
 

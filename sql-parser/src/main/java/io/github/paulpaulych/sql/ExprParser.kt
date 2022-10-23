@@ -6,10 +6,8 @@ import io.github.paulpaulych.parser.TextParsers.notEof
 import io.github.paulpaulych.parser.TextParsers.oneOf
 import io.github.paulpaulych.parser.TextParsers.scoped
 import io.github.paulpaulych.parser.TextParsersDsl.and
-import io.github.paulpaulych.parser.TextParsersDsl.defer
 import io.github.paulpaulych.parser.TextParsersDsl.many
 import io.github.paulpaulych.parser.TextParsersDsl.map
-import io.github.paulpaulych.parser.TextParsersDsl.or
 import io.github.paulpaulych.parser.TextParsersDsl.plus
 import io.github.paulpaulych.parser.TextParsersDsl.sepBy
 import io.github.paulpaulych.parser.TextParsersDsl.skipL
@@ -24,19 +22,13 @@ import io.github.paulpaulych.sql.CommonSqlParsers.quoted
 import io.github.paulpaulych.sql.CommonSqlParsers.s
 import io.github.paulpaulych.sql.CommonSqlParsers.sqlId
 import io.github.paulpaulych.sql.CommonSqlParsers.sqlNull
-import io.github.paulpaulych.sql.CommonSqlParsers.wildcard
 import io.github.paulpaulych.sql.CommonSqlParsers.ws
 import io.github.paulpaulych.sql.Expr.*
-import io.github.paulpaulych.sql.Expr.SelectableExpr.ColumnExpr
-import io.github.paulpaulych.sql.Expr.SelectableExpr.WildcardExpr
 import io.github.paulpaulych.sql.Op1Type.*
 import io.github.paulpaulych.sql.Op2Type.*
-import io.github.paulpaulych.sql.SqlScopes.*
 
 // TODO: optimize with constants
-class ExprParser(
-    val wildcardAllowed: Boolean
-) {
+object ExprParser {
 
     private val comparisonOperator: Parser<Op2Type> = oneOf(sequenceOf(
         s("=").map { EQ },
@@ -61,6 +53,8 @@ class ExprParser(
     private val unMinus: Parser<Op1Type> = s("-").map { UN_MINUS }
     private val unPlus: Parser<Op1Type> = s("+").map { UN_PLUS }
 
+    private val columnExpr: Parser<Expr> = column.map(::ColumnExpr)
+
     private val exprParsers: List<Parser<Expr>> = listOf(
         samePrecedenceBinOps(Keyword.OR.parser().map { OR }, arg = { expr(skipParsers = 1) }).attempt(),
         samePrecedenceBinOps(Keyword.AND.parser().map { AND }, arg = { expr(skipParsers = 2) }).attempt(),
@@ -77,11 +71,10 @@ class ExprParser(
         quoted,
         boolean.attempt(),
         functionCall(arg = { expr(skipParsers = 0) }).attempt(),
-        columnOrWildcard()
+        columnExpr
     )
 
-    fun expr(): Parser<Expr> =
-        scoped("expression", "expression expected", expr(skipParsers = 0))
+    val expr: Parser<Expr> = scoped("expression", "expression expected", expr(skipParsers = 0))
 
     private fun expr(skipParsers: Int): Parser<Expr> {
         val parsers = exprParsers.asSequence().drop(skipParsers)
@@ -109,15 +102,6 @@ class ExprParser(
         return ((typeParser skipR ws).attempt() + arg)
             .map { (type, operand) -> Op1Expr(type, operand) }
     }
-
-    private fun columnOrWildcard(): Parser<Expr> = scoped(
-        scope = SELECTABLE_EXPR.get,
-        msg = "expected ${COLUMN.get}${" or ${WILDCARD.get}".takeIf { wildcardAllowed } ?: ""}",
-        parser = when(wildcardAllowed) {
-            true -> wildcard.attempt().map(::WildcardExpr) or column.map(::ColumnExpr).defer()
-            false -> column.map(::ColumnExpr)
-        }
-    )
 
     private fun functionCall(arg: () -> Parser<Expr>): Parser<Expr> {
         val args = (ws skipL arg skipR ws) sepBy s(",")

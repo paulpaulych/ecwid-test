@@ -5,8 +5,6 @@ import io.github.paulpaulych.TestUtils.expectSuccess
 import io.github.paulpaulych.parser.ErrorItem.ParseError
 import io.github.paulpaulych.sql.Expr.*
 import io.github.paulpaulych.sql.Expr.LitExpr.*
-import io.github.paulpaulych.sql.Expr.SelectableExpr.ColumnExpr
-import io.github.paulpaulych.sql.Expr.SelectableExpr.WildcardExpr
 import io.github.paulpaulych.sql.Op1Type.*
 import io.github.paulpaulych.sql.Op2Type.*
 import io.kotest.core.spec.style.DescribeSpec
@@ -14,8 +12,9 @@ import io.kotest.matchers.shouldBe
 
 class ExprParserTest: DescribeSpec({
 
+    val parser = ExprParser.expr
+
     it("sql literal parser") {
-        val parser = ExprParser(wildcardAllowed = false).expr()
 
         expectSuccess(parser,
             "null" to SqlNullExpr,
@@ -32,26 +31,22 @@ class ExprParserTest: DescribeSpec({
     }
 
     it("selectable expr") {
-        expectSuccess(ExprParser(wildcardAllowed = false).expr(),
+        expectSuccess(parser,
             "table.col" to ColumnExpr(Column("col", SqlId(null, "table"))),
+            "table.*" to ColumnExpr(Column("*", SqlId(null, "table"))),
             "col" to ColumnExpr(Column("col", null)),
             "schema.table.col" to ColumnExpr(Column("col", SqlId("schema", "table"))),
-        )
-
-        expectSuccess(ExprParser(wildcardAllowed = true).expr(),
-            "table.col" to ColumnExpr(Column("col", SqlId(null, "table"))),
-            "table.*" to WildcardExpr(Wildcard("table")),
-            "schema.table.*" to WildcardExpr(Wildcard("schema.table")),
+            "schema.table.*" to ColumnExpr(Column("*", SqlId("schema", "table")))
         )
     }
 
     it("parentheses expressions") {
-        expectSuccess(ExprParser(wildcardAllowed = true).expr(),
+        expectSuccess(parser,
             "(true)" to BoolExpr(true),
             "((true))" to BoolExpr(true),
             "(( (true          )))" to BoolExpr(true)
         )
-        expectFailure(ExprParser(wildcardAllowed = true).expr(),
+        expectFailure(parser,
             "(" to {
                 error shouldBe ParseError("expression", "expression expected")
             },
@@ -59,7 +54,7 @@ class ExprParserTest: DescribeSpec({
     }
 
     it("unary operator expr") {
-        expectSuccess(ExprParser(wildcardAllowed = false).expr(),
+        expectSuccess(parser,
             "not false" to Op1Expr(NOT, BoolExpr(false)),
             "NOT ( true)" to Op1Expr(NOT, BoolExpr(true)),
             "NOT( true)" to Op1Expr(NOT, BoolExpr(true)),
@@ -70,24 +65,28 @@ class ExprParserTest: DescribeSpec({
             "+( \n\t27.0\t )" to Op1Expr(UN_PLUS, DoubleExpr(27.0)),
         )
 
-        expectFailure(ExprParser(wildcardAllowed = false).expr(),
+        expectFailure(parser,
             "NOT(" to {
-//                error shouldBe ParseError("expression", "invalid expression syntax")
+                error shouldBe ParseError("expression", "expression expected")
+                cause?.error shouldBe ParseError("not end of input", "end of input found")
             },
             "NOT(false" to {
-//                error shouldBe ParseError("')'", "expected ')'")
+                error shouldBe ParseError("expression", "expression expected")
+                cause?.error shouldBe ParseError("')'", "expected ')'")
             },
             "-" to {
-//                error shouldBe ScopesTried(listOf("'('", "expression"))
+                error shouldBe ParseError("expression", "expression expected")
+                cause?.error shouldBe ParseError("not end of input", "end of input found")
             },
             "-(" to {
-//                error shouldBe ParseError("expression", "invalid expression syntax")
+                error shouldBe ParseError("expression", "expression expected")
+                cause?.error shouldBe ParseError("not end of input", "end of input found")
             },
         )
     }
 
     it("binary operator expr") {
-        expectSuccess(ExprParser(wildcardAllowed = false).expr(),
+        expectSuccess(parser,
             "false OR true" to Op2Expr(OR, BoolExpr(false), BoolExpr(true)),
             "false or true" to Op2Expr(OR, BoolExpr(false), BoolExpr(true)),
             "false and true" to Op2Expr(AND, BoolExpr(false), BoolExpr(true)),
@@ -97,7 +96,7 @@ class ExprParserTest: DescribeSpec({
     }
 
     it("function invocation expression") {
-        expectSuccess(ExprParser(wildcardAllowed = false).expr(),
+        expectSuccess(parser,
             "blabla(false)" to FunExpr(
                 function = SqlId(null, "blabla"),
                 args = listOf(BoolExpr(false))
@@ -114,7 +113,7 @@ class ExprParserTest: DescribeSpec({
     }
 
     it("operator priority test") {
-        expectSuccess(ExprParser(wildcardAllowed = true).expr(),
+        expectSuccess(parser,
             "false or true and false" to Op2Expr(
                 OR,
                 BoolExpr(false),
@@ -293,7 +292,7 @@ class ExprParserTest: DescribeSpec({
             "x > 1" to Op2Expr(GT, ColumnExpr(Column("x", null)), IntExpr(1)),
             "COUNT(*) > 1 AND SUM(book.cost) > 500" to Op2Expr(AND,
                 Op2Expr(GT,
-                    FunExpr(SqlId(null, "COUNT"), listOf(WildcardExpr(Wildcard(null)))),
+                    FunExpr(SqlId(null, "COUNT"), listOf(ColumnExpr(Column("*", null)))),
                     IntExpr(1)
                 ),
                 Op2Expr(GT,
@@ -305,7 +304,7 @@ class ExprParserTest: DescribeSpec({
     }
 
     it("spaces between expressions") {
-        expectSuccess(ExprParser(wildcardAllowed = false).expr(),
+        expectSuccess(parser,
             "(true) and (false)" to Op2Expr(AND, BoolExpr(true), BoolExpr(false)),
             "(true)and(false)" to Op2Expr(AND, BoolExpr(true), BoolExpr(false)),
             "(true)and (false)" to Op2Expr(AND, BoolExpr(true), BoolExpr(false)),
@@ -334,7 +333,7 @@ class ExprParserTest: DescribeSpec({
             "not_table.true_column-5" to Op2Expr(MINUS, ColumnExpr(Column("true_column", SqlId(null, "not_table"))), IntExpr(5)),
         )
 
-        expectFailure(ExprParser(wildcardAllowed = false).expr(),
+        expectFailure(parser,
             "-1and false" to {
                 cause?.cause?.error shouldBe ParseError("word separator", "word separator expected")
                 cause?.cause?.state?.offset shouldBe 2

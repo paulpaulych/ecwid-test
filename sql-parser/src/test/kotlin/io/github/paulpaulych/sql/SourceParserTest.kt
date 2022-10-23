@@ -1,9 +1,9 @@
 package io.github.paulpaulych.sql
 
 import io.github.paulpaulych.TestUtils.expectSuccess
+import io.github.paulpaulych.sql.Expr.ColumnExpr
 import io.github.paulpaulych.sql.Expr.LitExpr.*
 import io.github.paulpaulych.sql.Expr.Op2Expr
-import io.github.paulpaulych.sql.Expr.SelectableExpr.ColumnExpr
 import io.github.paulpaulych.sql.JoinType.*
 import io.github.paulpaulych.sql.Op2Type.EQ
 import io.github.paulpaulych.sql.Op2Type.LT
@@ -178,6 +178,7 @@ class SourceParserTest : DescribeSpec({
 
     }
 
+    //TODO: move to QueryParserTest
     //language=sql
     val cases = listOf(
         "select * from table_a",

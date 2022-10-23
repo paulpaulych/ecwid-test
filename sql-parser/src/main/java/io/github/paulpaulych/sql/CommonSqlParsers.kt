@@ -13,7 +13,6 @@ import io.github.paulpaulych.parser.TextParsers.succeed
 import io.github.paulpaulych.parser.TextParsersDsl.and
 import io.github.paulpaulych.parser.TextParsersDsl.defer
 import io.github.paulpaulych.parser.TextParsersDsl.flatMap
-import io.github.paulpaulych.parser.TextParsersDsl.many
 import io.github.paulpaulych.parser.TextParsersDsl.map
 import io.github.paulpaulych.parser.TextParsersDsl.or
 import io.github.paulpaulych.parser.TextParsersDsl.plus
@@ -25,7 +24,6 @@ import io.github.paulpaulych.sql.Expr.LitExpr.*
 import io.github.paulpaulych.sql.SortOrder.ASC
 import io.github.paulpaulych.sql.SortOrder.DESC
 
-//TODO: remove wildcard
 @Suppress("RegExpSimplifiable")
 object CommonSqlParsers {
 
@@ -45,6 +43,8 @@ object CommonSqlParsers {
 
     private fun wOrW(s: String): Parser<String> = (s(s.lowercase()) or s(s.uppercase()).defer()) skipR wordSep
 
+    private val star: Parser<String> = s("*") skipR wordSep
+
     val anyWord: Parser<String> = latinWord skipR wordSep
 
     private fun r(regex: Regex): Parser<String> = regex(regex)
@@ -54,7 +54,7 @@ object CommonSqlParsers {
         parser =
             (latinWord skipR s(".")).optional()
                 .and((latinWord skipR s(".")).optional())
-                .and(latinWord)
+                .and((anyWord or { star }))
                 .map { (sqlId, name) ->
                     Column(
                         name = name,
@@ -63,16 +63,6 @@ object CommonSqlParsers {
                             ?: sqlId.first?.let { SqlId(null, it) },
                     )
                 }
-    )
-
-    val wildcard: Parser<Wildcard> = scoped(
-        scope = "wildcard",
-        parser = (latinWord skipR s(".")).many().skipR(s("*"))
-            .map { sourceSegments ->
-                Wildcard(
-                    source = sourceSegments.joinToString(".").takeIf { it.isNotEmpty() }
-                )
-            }
     )
 
     val sqlNull: Parser<Expr> = Keyword.NULL.parser().map { SqlNullExpr }

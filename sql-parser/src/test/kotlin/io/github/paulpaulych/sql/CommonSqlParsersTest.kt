@@ -15,6 +15,9 @@ internal class CommonSqlParsersTest: DescribeSpec({
             "schema.table.col" to Column(name = "col", source = SqlId("schema", "table")),
             "some_col_name" to Column("some_col_name", null),
             "source_alias.some_col_name" to Column("some_col_name", SqlId(null, "source_alias")),
+            "*" to Column("*", null),
+            "source.*" to Column(name = "*", source = SqlId(null, "source")),
+            "schema.table.*" to Column(name = "*", source = SqlId("schema", "table")),
         )
 
         expectFailure(CommonSqlParsers.column,
@@ -24,14 +27,6 @@ internal class CommonSqlParsersTest: DescribeSpec({
             "123" to {
                 error shouldBe ParseError("column", "invalid column syntax")
             },
-        )
-    }
-
-    it("wildcard parser") {
-        expectSuccess(CommonSqlParsers.wildcard,
-            "*" to Wildcard(null),
-            "source.*" to Wildcard("source"),
-            "schema.table.*" to Wildcard("schema.table"),
         )
     }
 

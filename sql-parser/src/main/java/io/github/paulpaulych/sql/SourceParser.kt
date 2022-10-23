@@ -19,15 +19,13 @@ import io.github.paulpaulych.sql.CommonSqlParsers.inParentheses
 import io.github.paulpaulych.sql.CommonSqlParsers.parser
 import io.github.paulpaulych.sql.CommonSqlParsers.ws
 import io.github.paulpaulych.sql.CommonSqlParsers.ws1
+import io.github.paulpaulych.sql.ExprParser.expr
 import io.github.paulpaulych.sql.JoinType.*
 import io.github.paulpaulych.sql.Source.*
 import io.github.paulpaulych.sql.SourceParser.SourceWithoutAlias.*
 
 
 object SourceParser {
-
-    //TODO: are subqueries allowed in join condition expression ?
-    private val expr: () -> Parser<Expr> = ExprParser(wildcardAllowed = false)::expr
 
     private val alias: Parser<String> = scoped(
         scope = "alias",
@@ -57,7 +55,7 @@ object SourceParser {
         parser = (Keyword.ON.parser() skipL ws1 skipL expr).map { it }
     )
 
-    private val joinOperator: Parser<JoinType> = oneOf(sequenceOf(
+    private val joinType: Parser<JoinType> = oneOf(sequenceOf(
         crossJoinKeyword.map { CROSS },
         innerJoinKeyword.map { INNER },
         rightJoinKeyword.map { RIGHT },
@@ -91,7 +89,7 @@ object SourceParser {
         val argParser = ws skipL arg
 
         val joinWithCondition =
-            (ws skipL joinOperator + argParser)
+            (ws skipL joinType + argParser)
                 .flatMap { (type, rhs) ->
                     (ws skipL joinCondition(type))
                         .map { cond ->

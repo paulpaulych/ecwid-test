@@ -15,12 +15,10 @@ import io.github.paulpaulych.sql.CommonSqlParsers.intValue
 import io.github.paulpaulych.sql.CommonSqlParsers.sortOrder
 import io.github.paulpaulych.sql.CommonSqlParsers.parser
 import io.github.paulpaulych.sql.CommonSqlParsers.ws
+import io.github.paulpaulych.sql.ExprParser.expr
 import io.github.paulpaulych.sql.SourceParser.source
 
 object QueryParser {
-
-    //TODO: remove wildcardAllowed flag
-    private val expr = ExprParser(wildcardAllowed = true).expr()
 
     private val selectedItems: Parser<List<SelectedItem>> =
         ((ws skipL expr skipR ws) + (Keyword.AS.parser() skipL ws skipL anyWord.excludingKeywords()).optional())
