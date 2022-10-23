@@ -11,6 +11,7 @@ import io.kotest.data.*
 import io.kotest.matchers.collections.shouldContainExactly
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.instanceOf
+import java.lang.System.lineSeparator
 
 object TestUtils {
 
@@ -63,7 +64,7 @@ object TestUtils {
                 }
                 is Success -> {
                     val query: Query = result.get
-                    query.toString().lines() shouldContainExactly expected.lines()
+                    query.toString() shouldHaveSameLines expected
                 }
             }
         }
@@ -77,7 +78,10 @@ object TestUtils {
             when(val result = TextParsers.run(QueryParser.query, given)) {
                 is Failure -> {
                     val stacktrace: StackTrace = result.get
-                    fmt(stacktrace).lines() shouldContainExactly expected.lines()
+                    val stacktraceString = fmt(stacktrace)
+                    withClue(lineSeparator() + stacktraceString + lineSeparator()) {
+                        stacktraceString.lines() shouldContainExactly expected.lines()
+                    }
                 }
                 is Success -> {
                     fail("expected failure: ${result.get}")

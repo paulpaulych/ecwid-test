@@ -194,7 +194,7 @@ private fun Expr.fmt(buffer: IndentBuffer) {
 
 private fun SqlIdSource.fmt(): String = alias?.let { "${sqlId.fmt()} $it" } ?: sqlId.fmt()
 private fun SqlId.fmt(): String = schema?.let { "$it.$name" } ?: name
-private fun Column.fmt(): String = source?.let { "$it.$name" } ?: name
+private fun Column.fmt(): String = source?.let { "${it.fmt()}.$name" } ?: name
 private fun Op1Type.fmt(): String = when(this) {
     Op1Type.UN_MINUS -> "-"
     Op1Type.UN_PLUS -> "+"

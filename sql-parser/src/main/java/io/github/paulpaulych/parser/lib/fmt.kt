@@ -16,7 +16,7 @@ internal fun fmt(stack: StackTrace): String {
     val errorInputLine = InputLine.from(lastMsgState)
     val lineHeader = "[${errorInputLine.line + 1}:${errorInputLine.column + 1}]"
     val line = lastMsgState.input.lines()[errorInputLine.line]
-    val highlight = "here --^".padStart(errorInputLine.column + lineHeader.length + 2)
+    val highlight = "here--^".padStart(errorInputLine.column + lineHeader.length + 1)
     return "stacktrace:" + lineSeparator() +
             stacktrace + lineSeparator() +
             lineSeparator() +

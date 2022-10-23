@@ -29,7 +29,7 @@ internal class FmtKtTest: DescribeSpec({
                         [1:6] expected ', world!'
                         
                         [1:6] Hello world
-                            here --^
+                             here--^
                         error: expected ', world!'
                     """.trimIndent()
                 )
