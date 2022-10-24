@@ -4,7 +4,8 @@ CLI for SQL formatting
 
 Developed as a [job test of Ecwid by Lightspeed](./task.md)
 
-### As a result you receive:
+## You receive:
+
 1. formatted sql
 2. implicit things (ASC, INNER, ','-join, AS) become explicit
 3. brackets are added into expressions for explicit definition of the calculation order (considering precedence)
