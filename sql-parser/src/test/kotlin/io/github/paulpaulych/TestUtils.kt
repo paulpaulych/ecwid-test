@@ -1,5 +1,7 @@
 package io.github.paulpaulych
 
+import io.github.paulpaulych.parser.FormatResult
+import io.github.paulpaulych.parser.QueryFormatter
 import io.github.paulpaulych.parser.lib.ParseResult
 import io.github.paulpaulych.parser.lib.ParseResult.Failure
 import io.github.paulpaulych.parser.lib.ParseResult.Success
@@ -59,12 +61,16 @@ object TestUtils {
             headers("given", "expected"),
             *cases.map { row(it.first, it.second) }.toTypedArray()
         )) { given, expected ->
-            when(val result = formatSql(given)) {
+            val formatter = QueryFormatter()
+            val results = given.lines().flatMap { formatter.appendInput(it) }
+            when(val result = results.first()) {
                 is FormatResult.Failure -> {
                     fail("expected success, but was: ${result.stacktrace}")
                 }
                 is FormatResult.Success -> {
-                    result.sql shouldHaveSameLines expected
+                    withClue(result.sql) {
+                        result.sql shouldHaveSameLines expected
+                    }
                 }
             }
         }
@@ -75,7 +81,9 @@ object TestUtils {
             headers("given", "expected"),
             *cases.map { row(it.first, it.second) }.toTypedArray()
         )) { given, expected ->
-            when(val result = formatSql(given)) {
+            val formatter = QueryFormatter()
+            val results = given.lines().flatMap { formatter.appendInput(it) }
+            when(val result = results.first()) {
                 is FormatResult.Failure -> {
                     withClue(lineSeparator() + result.stacktrace + lineSeparator()) {
                         result.stacktrace.lines() shouldContainExactly expected.lines()

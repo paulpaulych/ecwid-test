@@ -5,6 +5,8 @@ import io.github.paulpaulych.parser.sql.Expr.*
 import io.github.paulpaulych.parser.sql.Op2Type.*
 import io.github.paulpaulych.parser.sql.Source.*
 
+private const val JOIN_INDENT = "    "
+
 fun sqlIndentBuffer(): IndentBuffer {
     return IndentBuffer.create(
         initialIndent = "",
@@ -62,17 +64,18 @@ private fun Query.fmt(buffer: IndentBuffer) {
 
 private fun JoinSource.fmt(buffer: IndentBuffer) {
     buffer
+        .appendText("(")
         .apply(lhs::fmt)
-        .appendIndented(resetColumn = true) { joinBuffer ->
-            joinBuffer
-                .appendText("${type.name} JOIN ")
-                .apply(rhs::fmt)
-            if (condition != null) {
-                joinBuffer
-                    .appendText(" ON ")
-                    .apply(condition::fmt)
-            }
-        }
+        .newLine()
+        .appendText(JOIN_INDENT)
+        .appendText("${type.name} JOIN ")
+        .apply(rhs::fmt)
+    if (condition != null) {
+        buffer
+            .appendText(" ON ")
+            .apply(condition::fmt)
+    }
+    buffer.appendText(")")
 }
 
 private fun SubQuerySource.fmt(buffer: IndentBuffer) {
@@ -100,31 +103,27 @@ private fun Op1Expr.fmt(buffer: IndentBuffer) {
 
 private fun Op2Expr.fmt(buffer: IndentBuffer): IndentBuffer =
     when(this.op) {
-        AND -> {
-            buffer
-                .apply(lhs::fmt)
-                .appendIndented(resetColumn = true, times = 2) { twiceIndentedBuf ->
-                    twiceIndentedBuf
-                        .appendText("${op.fmt()} ")
-                        .apply(rhs::fmt)
-                }
-        }
+        AND,
         OR -> {
             buffer
+                .appendText("(")
                 .apply(lhs::fmt)
                 .appendIndented(resetColumn = true) { indented ->
                     indented
                         .appendText("${op.fmt()} ")
                         .apply(rhs::fmt)
+                        .appendText(")")
                 }
         }
         EQ, NEQ, GT, GTE, LT,
         LTE, PLUS, MINUS, MOD, DIV,
         MULT -> {
             buffer
+                .appendText("(")
                 .apply(lhs::fmt)
                 .appendText(" ${op.fmt()} ")
                 .apply(rhs::fmt)
+                .appendText(")")
         }
     }
 

@@ -2,9 +2,76 @@ package io.github.paulpaulych
 
 import io.github.paulpaulych.TestUtils.expectFmtFailure
 import io.github.paulpaulych.TestUtils.expectFmtSuccess
+import io.github.paulpaulych.TestUtils.shouldHaveSameLines
+import io.github.paulpaulych.parser.FormatResult.Failure
+import io.github.paulpaulych.parser.FormatResult.Success
+import io.github.paulpaulych.parser.QueryFormatter
 import io.kotest.core.spec.style.DescribeSpec
+import io.kotest.matchers.collections.shouldHaveSize
+import io.kotest.matchers.collections.shouldMatchInOrder
+import io.kotest.matchers.shouldBe
 
 class QueryFormatterTest: DescribeSpec({
+
+    it("query formatter test") {
+        val formatter = QueryFormatter()
+
+        var results = formatter.appendInput("select")
+        results shouldBe listOf()
+
+        results = formatter.appendInput("* from a;")
+        results shouldHaveSize 1
+        with (results.first() as Success) {
+            source shouldBe """
+                select
+                * from a;
+            """.trimIndent()
+            sql shouldHaveSameLines """
+                SELECT
+                    *
+                FROM a;
+            """.trimIndent()
+        }
+
+        results = formatter.appendInput("select * from a  ; select * ;select * from c;")
+        results shouldHaveSize 3
+        results shouldMatchInOrder listOf(
+            {
+                with (it as Success) {
+                    source shouldBe "select * from a  ;"
+                    sql shouldHaveSameLines """
+                        SELECT
+                            *
+                        FROM a;
+                    """.trimIndent()
+                }
+            },
+            {
+                with (it as Failure) {
+                    source shouldBe " select * ;"
+                    stacktrace shouldHaveSameLines """
+                        stacktrace:
+                        [1:11] keyword FROM expected: expected one of ['from', 'FROM']
+                        
+                        [1:11]  select * ;
+                                   here--^
+                        error: expected one of ['from', 'FROM']
+                    """.trimIndent()
+                }
+            },
+            {
+                with (it as Success) {
+                    source shouldBe "select * from c;"
+                    sql shouldHaveSameLines """
+                        SELECT
+                            *
+                        FROM c;
+                    """.trimIndent()
+                }
+            }
+        )
+
+    }
 
     it("valid queries") {
         //language=SQL
@@ -22,11 +89,11 @@ class QueryFormatterTest: DescribeSpec({
                     author.name,
                     count(book.id),
                     sum(book.cost)
-                FROM author
-                    LEFT JOIN book ON author.id = book.author_id
+                FROM (author
+                    LEFT JOIN book ON (author.id = book.author_id))
                 GROUP BY author.name
-                HAVING COUNT(*) > 1
-                        AND SUM(book.cost) > 500
+                HAVING ((COUNT(*) > 1)
+                    AND (SUM(book.cost) > 500))
                 LIMIT 10
                 OFFSET 172;
             """.trimIndent(),
@@ -71,17 +138,40 @@ class QueryFormatterTest: DescribeSpec({
             """.trimIndent() to """
                 SELECT
                     count(*) AS c
-                FROM (
-                         SELECT
-                             *
-                         FROM table_a
-                     ) AS a
+                FROM ((
+                          SELECT
+                              *
+                          FROM table_a
+                      ) AS a
                     INNER JOIN (
                                    SELECT
                                        *
                                    FROM table_b
-                               ) AS b ON a.id = b.id;
-            """.trimIndent()
+                               ) AS b ON (a.id = b.id));
+            """.trimIndent(),
+
+            """
+                select  1 + ( 1+ (2 -1.0)) / count(b.*) + 3
+                AS c from some_table some, some_table some2, ((select * from table_a) a join (select * from table_b) b 
+                on a.id = b.id) where not - a.id = asdf or false;
+            """.trimIndent() to """
+                SELECT
+                    ((1 + ((1 + (2 - 1.0)) / count(b.*))) + 3) AS c
+                FROM ((some_table some
+                    CROSS JOIN some_table some2)
+                    CROSS JOIN ((
+                                    SELECT
+                                        *
+                                    FROM table_a
+                                ) AS a
+                    INNER JOIN (
+                                   SELECT
+                                       *
+                                   FROM table_b
+                               ) AS b ON (a.id = b.id)))
+                WHERE (NOT((-(a.id) = asdf))
+                    OR false);
+            """.trimIndent(),
             )
     }
 
@@ -97,11 +187,11 @@ class QueryFormatterTest: DescribeSpec({
                 error: expected one of ['select', 'SELECT']
             """.trimIndent(),
 
-            "" to """
+            ";" to """
                 stacktrace:
                 [1:1] keyword SELECT expected: expected one of ['select', 'SELECT']
 
-                [1:1] 
+                [1:1] ;
                 here--^
                 error: expected one of ['select', 'SELECT']
             """.trimIndent(),

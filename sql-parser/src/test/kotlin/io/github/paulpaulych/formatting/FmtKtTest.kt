@@ -48,12 +48,12 @@ class FmtKtTest: DescribeSpec({
                 SelectedItem(IntExpr(2), "b"),
             ),
             source = JoinSource(CROSS, condition = null,
-                lhs = JoinSource(INNER,
+                lhs = tableSource("a"),
+                rhs = JoinSource(INNER,
                     condition = BoolExpr(false),
-                    lhs = tableSource("a"),
-                    rhs = tableSource("b")
-                ),
-                rhs = tableSource("c")
+                    lhs = tableSource("b"),
+                    rhs = tableSource("c")
+                )
             ),
             where = Op2Expr(AND,
                 Op2Expr(LTE, IntExpr(1), IntExpr(2)),
@@ -73,13 +73,13 @@ class FmtKtTest: DescribeSpec({
             SELECT
                 1 AS a,
                 2 AS b
-            FROM a
-                INNER JOIN b ON false
-                CROSS JOIN c
-            WHERE 1 <= 2
-                    AND 3 >= 4
+            FROM (a
+                CROSS JOIN (b
+                INNER JOIN c ON false))
+            WHERE ((1 <= 2)
+                AND (3 >= 4))
             GROUP BY col1, col2
-            HAVING 5 <= 6
+            HAVING (5 <= 6)
             ORDER BY col3 ASC, col4 DESC
             LIMIT 12
             OFFSET 15;
@@ -154,43 +154,43 @@ class FmtKtTest: DescribeSpec({
         res shouldHaveSameLines """
             SELECT
                 1 AS a,
-                1 + (
-                        SELECT
-                            1 AS sub_a,
-                            2 AS sub_b
-                        FROM sub_a
-                            INNER JOIN sub_b ON false
-                            CROSS JOIN sub_c
-                        WHERE 1 <= 2
-                                AND 3 >= 4
-                        GROUP BY sub_col1, sub_col2
-                        HAVING 5 <= 6
-                        ORDER BY sub_col3 ASC, sub_col4 DESC
-                        LIMIT 13
-                        OFFSET 16
-                    ) - 7 AS sub,
+                ((1 + (
+                          SELECT
+                              1 AS sub_a,
+                              2 AS sub_b
+                          FROM ((sub_a
+                              INNER JOIN sub_b ON false)
+                              CROSS JOIN sub_c)
+                          WHERE ((1 <= 2)
+                              AND (3 >= 4))
+                          GROUP BY sub_col1, sub_col2
+                          HAVING (5 <= 6)
+                          ORDER BY sub_col3 ASC, sub_col4 DESC
+                          LIMIT 13
+                          OFFSET 16
+                      )) - 7) AS sub,
                 2 AS b
-            FROM a
+            FROM ((a
                 INNER JOIN (
                                SELECT
                                    1 AS sub_a,
                                    2 AS sub_b
-                               FROM sub_a
-                                   INNER JOIN sub_b ON false
-                                   CROSS JOIN sub_c
-                               WHERE 1 <= 2
-                                       AND 3 >= 4
+                               FROM ((sub_a
+                                   INNER JOIN sub_b ON false)
+                                   CROSS JOIN sub_c)
+                               WHERE ((1 <= 2)
+                                   AND (3 >= 4))
                                GROUP BY sub_col1, sub_col2
-                               HAVING 5 <= 6
+                               HAVING (5 <= 6)
                                ORDER BY sub_col3 ASC, sub_col4 DESC
                                LIMIT 13
                                OFFSET 16
-                           ) AS sub ON false
-                CROSS JOIN c
-            WHERE 1 <= 2
-                    AND 3 >= 4
+                           ) AS sub ON false)
+                CROSS JOIN c)
+            WHERE ((1 <= 2)
+                AND (3 >= 4))
             GROUP BY col1, col2
-            HAVING 5 <= 6
+            HAVING (5 <= 6)
             ORDER BY col3 ASC, col4 DESC
             LIMIT 12
             OFFSET 15;
