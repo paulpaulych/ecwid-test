@@ -56,18 +56,6 @@ data class Column(
     val source: SqlId?,
 )
 
-enum class Op1Type {
-    UN_MINUS, UN_PLUS, NOT
-}
-
-enum class Op2Type {
-    OR, AND,
-
-    EQ, NEQ, GT, GTE, LT, LTE,
-
-    PLUS, MINUS, MOD, DIV, MULT
-}
-
 enum class SortOrder { ASC, DESC }
 
 data class Sort(

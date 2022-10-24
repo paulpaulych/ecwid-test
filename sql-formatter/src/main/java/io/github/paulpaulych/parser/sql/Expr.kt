@@ -1,5 +1,16 @@
 package io.github.paulpaulych.parser.sql
 
+
+enum class Op1Type {
+    UN_MINUS, UN_PLUS, NOT
+}
+
+enum class Op2Type {
+    OR, AND,
+    EQ, NEQ, GT, GTE, LT, LTE,
+    PLUS, MINUS, MOD, DIV, MULT
+}
+
 sealed interface Expr {
     object SqlNullExpr: Expr
     data class IntExpr(val value: Int): Expr

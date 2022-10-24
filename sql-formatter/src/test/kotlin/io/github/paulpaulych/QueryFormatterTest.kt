@@ -280,17 +280,4 @@ class QueryFormatterTest: DescribeSpec({
             """.trimIndent()
         )
     }
-
-    //language=sql
-    val invalid = listOf(
-        // derived must have alias
-        "",
-        "(select * from table_a), (select * from table_b)",
-        // ON required
-        "select * table_a a join table_b b",
-        "table_a a inner table_b b",
-        "table_a a right join table_b b",
-        "table_a a left join table_b b",
-    )
-
 })

@@ -12,7 +12,7 @@ Developed as a [job test of Ecwid by Lightspeed](./task.md)
 
 ## Examples
 
-1. Input:
+Input:
 ```SQL
 select  1 + ( 1+ (2 -1.0)) / count(b.*) + 3
 AS c from some_table some, some_table some2, ((select * from table_a) a join (select * from table_b) b 
@@ -38,6 +38,8 @@ WHERE (NOT((-(a.id) = asdf))
     OR false);
 ```
 
+[See more examples](sql-formatter/src/test/kotlin/io/github/paulpaulych/QueryFormatterTest.kt)
+
 ## Stack
 
 - Language: Kotlin/JVM
@@ -47,11 +49,11 @@ WHERE (NOT((-(a.id) = asdf))
 ## Structure
 
 - `parser.lib` - Parser combinators library core. Inspired by [Functional Programming in Kotlin](https://www.manning.com/books/functional-programming-in-kotlin) 
-- `parser.json` - JSON parser. Used for debug, painful to delete.
+- `parser.json` - JSON parser. Used for debugging the library, painful to delete.
 - `parser.sql` - SQL Query parser.
-- `formatting` - SQL Query formatting
+- `formatting` - SQL Query formatting.
 
-## Features
+## Model
 
 Query model
 ```java
@@ -68,7 +70,7 @@ class Query {
 ```
 ..is good as a start point by does not represent actual structure of query:
 
-1. `columns` actually are [Expression](sql-parser/src/main/java/io/github/paulpaulych/parser/sql/Expr.kt) with(or without) aliases
+1. `columns` actually are [Expression](sql-formatter/src/main/java/io/github/paulpaulych/parser/sql/Expr.kt)
 2. `fromSource, joins` do not represent expression-based (tree-based) nature of query source.
    Brackets, default operator's order and operators' precedence should be taken into account.
 
@@ -90,7 +92,15 @@ should be interpreted by parser as recursive tree structure:
     }
 ```
 
-3. `WHERE` should contain single [Expression](sql-parser/src/main/java/io/github/paulpaulych/parser/sql/Expr.kt)
+3. `WHERE` should contain single [Expression](sql-formatter/src/main/java/io/github/paulpaulych/parser/sql/Expr.kt)
 4. `ORDER BY` contains list of expressions(not columns) with sort order
 
-Look at [my Query model](sql-parser/src/main/java/io/github/paulpaulych/parser/sql/Query.kt)
+Look at [my Query model](sql-formatter/src/main/java/io/github/paulpaulych/parser/sql/Query.kt)
+
+# Run
+
+`Intellij IDEA -> main() -> Run`
+or
+
+[//]: # (TODO)
+
