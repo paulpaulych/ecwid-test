@@ -4,7 +4,7 @@ CLI for SQL formatting
 
 Developed as a [job test of Ecwid by Lightspeed](./task.md)
 
-## You receive:
+## You receive
 
 1. formatted sql
 2. implicit things (ASC, INNER, ','-join, AS) become explicit
