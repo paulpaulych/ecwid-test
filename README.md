@@ -102,9 +102,11 @@ Look at [my Query model](sql-formatter/src/main/java/io/github/paulpaulych/parse
 **! JDK 8+ required !**
 
 `Intellij IDEA -> main() -> Run`
+
 or
+
 ```bash
-cd "$REPO_ROOT"/sql-formatter
+cd sql-formatter
 ./gradlew build
 cd ./build/libs
 java -jar sql-formatter-1.0.0-all.jar
