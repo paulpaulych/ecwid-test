@@ -35,9 +35,9 @@ class FmtKtTest: DescribeSpec({
 
         res shouldHaveSameLines """
             SELECT
-                1 as a,
-                2 as b
-            FROM c
+                1 AS a,
+                2 AS b
+            FROM c;
         """.trimIndent()
     }
 
@@ -71,8 +71,8 @@ class FmtKtTest: DescribeSpec({
 
         res shouldHaveSameLines """
             SELECT
-                1 as a,
-                2 as b
+                1 AS a,
+                2 AS b
             FROM a
                 INNER JOIN b ON false
                 CROSS JOIN c
@@ -82,7 +82,7 @@ class FmtKtTest: DescribeSpec({
             HAVING 5 <= 6
             ORDER BY col3 ASC, col4 DESC
             LIMIT 12
-            OFFSET 15
+            OFFSET 15;
         """.trimIndent()
     }
 
@@ -153,11 +153,11 @@ class FmtKtTest: DescribeSpec({
 
         res shouldHaveSameLines """
             SELECT
-                1 as a,
+                1 AS a,
                 1 + (
                         SELECT
-                            1 as sub_a,
-                            2 as sub_b
+                            1 AS sub_a,
+                            2 AS sub_b
                         FROM sub_a
                             INNER JOIN sub_b ON false
                             CROSS JOIN sub_c
@@ -168,13 +168,13 @@ class FmtKtTest: DescribeSpec({
                         ORDER BY sub_col3 ASC, sub_col4 DESC
                         LIMIT 13
                         OFFSET 16
-                    ) - 7 as sub,
-                2 as b
+                    ) - 7 AS sub,
+                2 AS b
             FROM a
                 INNER JOIN (
                                SELECT
-                                   1 as sub_a,
-                                   2 as sub_b
+                                   1 AS sub_a,
+                                   2 AS sub_b
                                FROM sub_a
                                    INNER JOIN sub_b ON false
                                    CROSS JOIN sub_c
@@ -193,7 +193,7 @@ class FmtKtTest: DescribeSpec({
             HAVING 5 <= 6
             ORDER BY col3 ASC, col4 DESC
             LIMIT 12
-            OFFSET 15
+            OFFSET 15;
         """.trimIndent()
     }
 

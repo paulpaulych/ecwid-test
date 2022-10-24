@@ -208,7 +208,7 @@ class JsonParserTest: DescribeSpec({
             [4:20] expected one of [object, array, literal]
 
             [4:20] 45.5, {"innerKey": }]}, "c" : 17.3,
-                               here --^
+                                here--^
             error: expected one of [object, array, literal]
         """.trimIndent().lines()
     }

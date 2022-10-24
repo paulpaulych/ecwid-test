@@ -4,6 +4,7 @@ import io.github.paulpaulych.parser.lib.Parser
 import io.github.paulpaulych.parser.lib.TextParsers.attempt
 import io.github.paulpaulych.parser.lib.TextParsers.oneOf
 import io.github.paulpaulych.parser.lib.TextParsers.optional
+import io.github.paulpaulych.parser.lib.TextParsers.peekOnly
 import io.github.paulpaulych.parser.lib.TextParsers.scoped
 import io.github.paulpaulych.parser.lib.TextParsers.succeed
 import io.github.paulpaulych.parser.lib.TextParsersDsl.flatMap
@@ -12,10 +13,12 @@ import io.github.paulpaulych.parser.lib.TextParsersDsl.map
 import io.github.paulpaulych.parser.lib.TextParsersDsl.or
 import io.github.paulpaulych.parser.lib.TextParsersDsl.plus
 import io.github.paulpaulych.parser.lib.TextParsersDsl.skipL
+import io.github.paulpaulych.parser.lib.TextParsersDsl.skipR
 import io.github.paulpaulych.parser.sql.CommonSqlParsers.anyWord
 import io.github.paulpaulych.parser.sql.CommonSqlParsers.comma
 import io.github.paulpaulych.parser.sql.CommonSqlParsers.inParentheses
 import io.github.paulpaulych.parser.sql.CommonSqlParsers.parser
+import io.github.paulpaulych.parser.sql.CommonSqlParsers.s
 import io.github.paulpaulych.parser.sql.CommonSqlParsers.sqlId
 import io.github.paulpaulych.parser.sql.CommonSqlParsers.ws
 import io.github.paulpaulych.parser.sql.CommonSqlParsers.ws1
@@ -61,11 +64,25 @@ object SourceParser {
             RIGHT -> joinCondition
         }
 
+    private val querySource: Parser<Query> = ((s("(") skipL ws skipL Keyword.SELECT.parser().peekOnly()).attempt() skipL { query } skipR s(")"))
+
     private val sourceParsers: List<Parser<Source>> = listOf(
         joins(arg = { source(skipParsers = 1) }),
-        ({ query }.inParentheses() + (ws1 skipL alias)).attempt().map { (query, alias) -> SubQuerySource(query, alias) },
-        { source }.inParentheses(),
-        (sqlId + (ws1 skipL alias).optional()).map { (sqlId, alias) -> SqlIdSource(sqlId, alias) }
+        scoped(
+            scope = "derived query",
+            msg = "derived query expected",
+            parser = (querySource + (ws1 skipL alias)).map { (query, alias) -> SubQuerySource(query, alias) }
+        ),
+        scoped(
+            scope = "source in parentheses",
+            msg = "source in parentheses expected",
+            parser = { source }.inParentheses()
+        ),
+        scoped(
+            scope = "table or function",
+            msg = "table or function expected",
+            parser = (sqlId + (ws1 skipL alias).optional()).map { (sqlId, alias) -> SqlIdSource(sqlId, alias) }
+        ),
     )
 
     val source: Parser<Source> = source(skipParsers = 0)
@@ -81,7 +98,7 @@ object SourceParser {
         val argParser = ws skipL arg
 
         val joinWithCondition =
-            (ws skipL joinType + argParser)
+            ((ws skipL joinType).attempt() + argParser)
                 .flatMap { (type, rhs) ->
                     (ws skipL joinCondition(type))
                         .map { cond ->

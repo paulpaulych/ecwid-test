@@ -1,10 +1,27 @@
 package io.github.paulpaulych.parser.lib
 
+import io.github.paulpaulych.parser.lib.ErrorItem.ParseError
+import io.github.paulpaulych.parser.lib.ParseResult.Failure
 import io.github.paulpaulych.parser.lib.TextParsers.flatMap
 import io.github.paulpaulych.parser.lib.TextParsers.oneOf
 import io.github.paulpaulych.parser.lib.TextParsers.succeed
+import io.github.paulpaulych.parser.sql.CommonSqlParsers.ws
 
 object TextParsersDsl {
+
+    fun <A> failed(
+        scope: String,
+        msg: String,
+        isCommitted: Boolean = false
+    ): Parser<A> =
+        Parser { state ->
+            Failure(StackTrace(state, ParseError(scope, msg), isCommitted))
+        }
+
+    @Suppress("UNCHECKED_CAST")
+    fun <A: Any, B> Parser<A?>.ifPresent(f: (A) -> Parser<B>): Parser<B?> {
+        return this.flatMap { it?.let { (ws skipL { f(it) }) as Parser<B?> } ?: succeed(null) }
+    }
 
     fun <A> Parser<A>.defer(): () -> Parser<A> = { this }
 

@@ -4,12 +4,13 @@ import io.github.paulpaulych.parser.lib.Parser
 import io.github.paulpaulych.parser.lib.TextParsers.attempt
 import io.github.paulpaulych.parser.lib.TextParsers.notEof
 import io.github.paulpaulych.parser.lib.TextParsers.oneOf
+import io.github.paulpaulych.parser.lib.TextParsers.peekOnly
 import io.github.paulpaulych.parser.lib.TextParsers.scoped
-import io.github.paulpaulych.parser.lib.TextParsersDsl.and
+import io.github.paulpaulych.parser.lib.TextParsersDsl.failed
 import io.github.paulpaulych.parser.lib.TextParsersDsl.many
 import io.github.paulpaulych.parser.lib.TextParsersDsl.map
 import io.github.paulpaulych.parser.lib.TextParsersDsl.plus
-import io.github.paulpaulych.parser.lib.TextParsersDsl.sepBy
+import io.github.paulpaulych.parser.lib.TextParsersDsl.sepBy1
 import io.github.paulpaulych.parser.lib.TextParsersDsl.skipL
 import io.github.paulpaulych.parser.lib.TextParsersDsl.skipR
 import io.github.paulpaulych.parser.sql.CommonSqlParsers.boolean
@@ -28,7 +29,6 @@ import io.github.paulpaulych.parser.sql.Op1Type.*
 import io.github.paulpaulych.parser.sql.Op2Type.*
 import io.github.paulpaulych.parser.sql.QueryParser.query
 
-// TODO: optimize with constants
 object ExprParser {
 
     private val comparisonOperator: Parser<Op2Type> = oneOf(sequenceOf(
@@ -55,26 +55,28 @@ object ExprParser {
     private val unPlus: Parser<Op1Type> = s("+").map { UN_PLUS }
 
     private val columnExpr: Parser<Expr> = column.map(::ColumnExpr)
-    private val queryExpr: Parser<Expr> = (ws skipL { query }).map(::SubQueryExpr)
+    private val queryExpr: Parser<Expr> = ((s("(") skipL ws skipL Keyword.SELECT.parser().peekOnly()).attempt() skipL { query } skipR s(")")).map(::SubQueryExpr)
 
     private val exprParsers: List<Parser<Expr>> = listOf(
         samePrecedenceBinOps(Keyword.OR.parser().map { OR }, arg = { expr(skipParsers = 1) }).attempt(),
         samePrecedenceBinOps(Keyword.AND.parser().map { AND }, arg = { expr(skipParsers = 2) }).attempt(),
         unaryOp(Keyword.NOT.parser().map { NOT }, arg = { expr(skipParsers = 2) }),
-        samePrecedenceBinOps(comparisonOperator, arg = { expr(skipParsers = 4) }).attempt(),
-        samePrecedenceBinOps(plusOrMinus, arg = { expr(skipParsers = 5) }).attempt(),
-        samePrecedenceBinOps(divModMult, arg = { expr(skipParsers = 6) }).attempt(),
+        samePrecedenceBinOps(comparisonOperator, arg = { expr(skipParsers = 4) }),
+        samePrecedenceBinOps(plusOrMinus, arg = { expr(skipParsers = 5) }),
+        samePrecedenceBinOps(divModMult, arg = { expr(skipParsers = 6) }),
         unaryOp(unMinus, arg = { expr(skipParsers = 8) }),
         unaryOp(unPlus, arg = { expr(skipParsers = 8) }),
-        queryExpr.inParentheses().attempt(),
+        queryExpr,
         { expr(skipParsers = 0) }.inParentheses(),
         sqlNull.attempt(),
         double,
         int,
         quoted,
         boolean.attempt(),
-        functionCall(arg = { expr(skipParsers = 0) }).attempt(),
-        columnExpr
+        functionCallWithoutArgs(),
+        functionCall(arg = { expr(skipParsers = 0) }),
+        columnExpr,
+        failed("expression", "no expression found", isCommitted = true)
     )
 
     val expr: Parser<Expr> = scoped("expression", "expression expected", expr(skipParsers = 0))
@@ -107,9 +109,13 @@ object ExprParser {
     }
 
     private fun functionCall(arg: () -> Parser<Expr>): Parser<Expr> {
-        val args = (ws skipL arg skipR ws) sepBy s(",")
-        return sqlId
-            .and(args.inParentheses())
+        val args = (ws skipL arg skipR ws) sepBy1 s(",")
+        return ((sqlId skipR s("(")).attempt() + (args skipR s(")")))
             .map { (sqlId, args) -> FunExpr(sqlId, args) }
+    }
+
+    private fun functionCallWithoutArgs(): Parser<Expr> {
+        return (sqlId skipR s("(") skipR ws skipR s(")")).attempt()
+            .map { sqlId -> FunExpr(sqlId, listOf()) }
     }
 }

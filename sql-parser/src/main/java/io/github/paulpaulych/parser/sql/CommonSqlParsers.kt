@@ -1,7 +1,5 @@
 package io.github.paulpaulych.parser.sql
 
-import io.github.paulpaulych.parser.lib.ErrorItem.ParseError
-import io.github.paulpaulych.parser.lib.ParseResult.Failure
 import io.github.paulpaulych.parser.lib.Parser
 import io.github.paulpaulych.parser.lib.TextParsers.optional
 import io.github.paulpaulych.parser.lib.TextParsers.peekOnly
@@ -11,6 +9,7 @@ import io.github.paulpaulych.parser.lib.TextParsers.string
 import io.github.paulpaulych.parser.lib.TextParsers.succeed
 import io.github.paulpaulych.parser.lib.TextParsersDsl.and
 import io.github.paulpaulych.parser.lib.TextParsersDsl.defer
+import io.github.paulpaulych.parser.lib.TextParsersDsl.failed
 import io.github.paulpaulych.parser.lib.TextParsersDsl.flatMap
 import io.github.paulpaulych.parser.lib.TextParsersDsl.map
 import io.github.paulpaulych.parser.lib.TextParsersDsl.or
@@ -133,14 +132,7 @@ object CommonSqlParsers {
     private fun Parser<String>.excludingKeywords(): Parser<String> =
         this.flatMap { value ->
             if (value in Keyword.ALL) {
-                Parser { state ->
-                    Failure(
-                        io.github.paulpaulych.parser.lib.StackTrace(
-                            state,
-                            ParseError("not keyword", "$value not allowed here")
-                        )
-                    )
-                }
+                failed("not keyword", "$value not allowed here")
             } else {
                 succeed(value)
             }

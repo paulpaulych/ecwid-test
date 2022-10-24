@@ -15,7 +15,7 @@ fun sqlIndentBuffer(): IndentBuffer {
 fun Query.fmt(): String {
     val buffer = sqlIndentBuffer()
     fmt(buffer)
-    return buffer.getResult()
+    return buffer.getResult() + ";"
 }
 
 private fun Query.fmt(buffer: IndentBuffer) {
@@ -162,7 +162,7 @@ private fun IndentBuffer.appendSelectedItems(items: List<SelectedItem>) =
         items = items,
         append = { buf, item ->
             buf.apply(item.expr::fmt)
-                .appendText(item.alias?.let { " as $it" } ?: "")
+                .appendText(item.alias?.let { " AS $it" } ?: "")
         },
         sep = { buf ->
             buf.appendText(",").newLine()

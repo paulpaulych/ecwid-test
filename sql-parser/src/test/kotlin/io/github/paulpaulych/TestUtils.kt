@@ -1,10 +1,11 @@
 package io.github.paulpaulych
 
-import io.github.paulpaulych.parser.lib.*
+import io.github.paulpaulych.parser.lib.ParseResult
 import io.github.paulpaulych.parser.lib.ParseResult.Failure
 import io.github.paulpaulych.parser.lib.ParseResult.Success
-import io.github.paulpaulych.parser.sql.Query
-import io.github.paulpaulych.parser.sql.QueryParser
+import io.github.paulpaulych.parser.lib.Parser
+import io.github.paulpaulych.parser.lib.StackTrace
+import io.github.paulpaulych.parser.lib.TextParsers
 import io.kotest.assertions.fail
 import io.kotest.assertions.withClue
 import io.kotest.data.*
@@ -58,13 +59,12 @@ object TestUtils {
             headers("given", "expected"),
             *cases.map { row(it.first, it.second) }.toTypedArray()
         )) { given, expected ->
-            when(val result = TextParsers.run(QueryParser.query, given)) {
-                is Failure -> {
-                    fail("expected success: ${fmt(result.get)}")
+            when(val result = formatSql(given)) {
+                is FormatResult.Failure -> {
+                    fail("expected success, but was: ${result.stacktrace}")
                 }
-                is Success -> {
-                    val query: Query = result.get
-                    query.toString() shouldHaveSameLines expected
+                is FormatResult.Success -> {
+                    result.sql shouldHaveSameLines expected
                 }
             }
         }
@@ -75,16 +75,14 @@ object TestUtils {
             headers("given", "expected"),
             *cases.map { row(it.first, it.second) }.toTypedArray()
         )) { given, expected ->
-            when(val result = TextParsers.run(QueryParser.query, given)) {
-                is Failure -> {
-                    val stacktrace: StackTrace = result.get
-                    val stacktraceString = fmt(stacktrace)
-                    withClue(lineSeparator() + stacktraceString + lineSeparator()) {
-                        stacktraceString.lines() shouldContainExactly expected.lines()
+            when(val result = formatSql(given)) {
+                is FormatResult.Failure -> {
+                    withClue(lineSeparator() + result.stacktrace + lineSeparator()) {
+                        result.stacktrace.lines() shouldContainExactly expected.lines()
                     }
                 }
-                is Success -> {
-                    fail("expected failure: ${result.get}")
+                is FormatResult.Success -> {
+                    fail("expected failure, but was: ${result.sql}")
                 }
             }
         }

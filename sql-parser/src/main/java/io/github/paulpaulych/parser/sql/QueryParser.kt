@@ -1,7 +1,9 @@
 package io.github.paulpaulych.parser.sql
 
 import io.github.paulpaulych.parser.lib.Parser
+import io.github.paulpaulych.parser.lib.TextParsers.attempt
 import io.github.paulpaulych.parser.lib.TextParsers.optional
+import io.github.paulpaulych.parser.lib.TextParsersDsl.ifPresent
 import io.github.paulpaulych.parser.lib.TextParsersDsl.map
 import io.github.paulpaulych.parser.lib.TextParsersDsl.plus
 import io.github.paulpaulych.parser.lib.TextParsersDsl.sepBy1
@@ -20,7 +22,7 @@ import io.github.paulpaulych.parser.sql.SourceParser.source
 object QueryParser {
 
     private val selectedItems: Parser<List<SelectedItem>> =
-        ((ws skipL expr skipR ws) + (Keyword.AS.parser() skipL ws skipL anyWord).optional())
+        ((ws skipL expr skipR ws) + (Keyword.AS.parser().optional().ifPresent { ws skipL anyWord }))
             .sepBy1(comma)
             .map { items -> items.map { (e, alias) -> SelectedItem(e, alias) } }
 
@@ -28,24 +30,24 @@ object QueryParser {
         ((ws skipL expr skipR ws) + sortOrder).sepBy1(comma)
             .map { items -> items.map { (e, order) -> Sort(e, order) } }
 
-    private val select = Keyword.SELECT.parser() skipL ws skipL selectedItems
-    private val from = Keyword.FROM.parser() skipL ws skipL source
-    private val where = Keyword.WHERE.parser() skipL ws skipL expr
-    private val groupBy = Keyword.GROUP.parser() skipL ws skipL Keyword.BY.parser() skipL ws skipL columnsByComma
-    private val having = Keyword.HAVING.parser() skipL ws skipL expr
-    private val orderBy = Keyword.GROUP.parser() skipL ws skipL Keyword.BY.parser() skipL ws skipL sorts
-    private val limit = Keyword.LIMIT.parser() skipL ws skipL intValue
-    private val offset = Keyword.OFFSET.parser() skipL ws skipL intValue
+    private val select = Keyword.SELECT.parser().attempt() skipL ws skipL selectedItems
+    private val from = Keyword.FROM.parser().attempt() skipL ws skipL source
+    private val where: Parser<Expr?> = Keyword.WHERE.parser().optional().ifPresent { ws skipL expr }
+    private val groupBy = (Keyword.GROUP.parser() skipL ws skipL Keyword.BY.parser()).optional().ifPresent { ws skipL columnsByComma }
+    private val having = Keyword.HAVING.parser().optional().ifPresent { ws skipL expr }
+    private val orderBy = (Keyword.GROUP.parser() skipL ws skipL Keyword.BY.parser()).optional().ifPresent { ws skipL sorts }
+    private val limit = Keyword.LIMIT.parser().optional().ifPresent { ws skipL intValue }
+    private val offset = Keyword.OFFSET.parser().optional().ifPresent { ws skipL intValue }
 
     val query: Parser<Query> =
         (ws skipL (select skipR ws) +
                 (from skipR ws) +
-                (where.optional() skipR ws) +
-                (groupBy.optional() skipR ws) +
-                (having.optional() skipR ws) +
-                (orderBy.optional() skipR ws) +
-                (limit.optional() skipR ws) +
-                (offset.optional()))
+                (where skipR ws) +
+                (groupBy skipR ws) +
+                (having skipR ws) +
+                (orderBy skipR ws) +
+                (limit skipR ws) +
+                (offset skipR ws))
             .map { (p1, offset) ->
                 val (p2, limit) = p1
                 val (p3, orderBy) = p2
